@@ -1,3 +1,5 @@
+支持中国小牛电动车连接。只修改了代码中的连接服务器，app-api-fk.niu.com改为app-api.niu.com，account-fk.niu.com改为account.niu.com，其他未做修改
+
 # Niu E-scooter Home Assistant integration
 
 This is a custom component for Home Assistant to integrate your Niu Scooter.
