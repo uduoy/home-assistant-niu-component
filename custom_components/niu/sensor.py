@@ -59,24 +59,26 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
 
 
 class NiuSensor(Entity):
+    _attr_has_entity_name = True
+
     def __init__(
         self,
         hass,
         api: NiuApi,
-        name,
+        name, # This 'name' parameter (from AVAILABLE_SENSORS) is no longer used for the entity name
         sensor_id,
         uom,
         id_name,
         sensor_grp,
-        sensor_prefix,
+        sensor_prefix, # This is also no longer directly used for the entity name
         device_class,
         sn,
         icon,
     ):
         self._unique_id = "sensor.niu_scooter_" + sn + "_" + sensor_id
-        self._name = (
-            "NIU Scooter " + sensor_prefix + " " + name
-        )  # Scooter name as sensor prefix
+        # self._name = (
+        #     "NIU Scooter " + sensor_prefix + " " + name
+        # )  # Scooter name as sensor prefix - REMOVED
         self._hass = hass
         self._uom = uom
         self._api = api
@@ -85,14 +87,15 @@ class NiuSensor(Entity):
         self._sensor_grp = sensor_grp  # info field for choosing the right URL
         self._icon = icon
         self._state = 0
+        self._attr_translation_key = sensor_id # Use sensor_id for translation
 
     @property
     def unique_id(self):
         return self._unique_id
 
-    @property
-    def name(self):
-        return self._name
+    # @property
+    # def name(self):
+    #     return self._name # REMOVED - Handled by translation_key and _attr_has_entity_name
 
     @property
     def unit_of_measurement(self):

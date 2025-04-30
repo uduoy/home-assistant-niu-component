@@ -1,0 +1,105 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "NIU 电动车集成",
+                "description": "输入您的 NIU 账户凭据。",
+                "data": {
+                    "username": "用户名 (手机号)",
+                    "password": "密码",
+                    "scooter_id": "车辆 ID (可选)"
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "无法连接到 NIU API。请检查您的凭据和网络连接。",
+            "invalid_auth": "无效的身份验证。请检查您的用户名和密码。",
+            "unknown": "发生未知错误。"
+        },
+        "abort": {
+            "already_configured": "此 NIU 账户已配置。"
+        }
+    },
+    "entity": {
+        "sensor": {
+            "BatteryCharge": {
+                "name": "电池电量"
+            },
+            "Isconnected": {
+                "name": "是否连接"
+            },
+            "TimesCharged": {
+                "name": "充电次数"
+            },
+            "temperatureDesc": {
+                "name": "温度描述"
+            },
+            "Temperature": {
+                "name": "电池温度"
+            },
+            "BatteryGrade": {
+                "name": "电池健康度"
+            },
+            "CurrentSpeed": {
+                "name": "当前速度"
+            },
+            "ScooterConnected": {
+                "name": "车辆是否连接"
+            },
+            "IsCharging": {
+                "name": "是否充电中"
+            },
+            "IsLocked": {
+                "name": "是否锁定"
+            },
+            "TimeLeft": {
+                "name": "剩余时间"
+            },
+            "EstimatedMileage": {
+                "name": "预计续航里程"
+            },
+            "centreCtrlBatt": {
+                "name": "中控电池电量"
+            },
+            "HDOP": {
+                "name": "水平精度因子"
+            },
+            "Longitude": {
+                "name": "经度"
+            },
+            "Latitude": {
+                "name": "纬度"
+            },
+            "Distance": {
+                "name": "本次骑行距离"
+            },
+            "RidingTime": {
+                "name": "本次骑行时间"
+            },
+            "totalMileage": {
+                "name": "总里程"
+            },
+            "DaysInUse": {
+                "name": "已使用天数"
+            },
+            "LastTrackStartTime": {
+                "name": "上次骑行开始时间"
+            },
+            "LastTrackEndTime": {
+                "name": "上次骑行结束时间"
+            },
+            "LastTrackDistance": {
+                "name": "上次骑行距离"
+            },
+            "LastTrackAverageSpeed": {
+                "name": "上次骑行平均速度"
+            },
+            "LastTrackRidingtime": {
+                "name": "上次骑行时间"
+            },
+            "LastTrackThumb": {
+                "name": "上次骑行轨迹缩略图"
+            }
+        }
+    }
+}
