@@ -2,12 +2,43 @@
     "config": {
         "step": {
             "user": {
-                "title": "NIU 电动车集成",
+                "title": "小牛电动车",
                 "description": "输入您的 NIU 账户凭据。",
                 "data": {
                     "username": "用户名 (手机号)",
                     "password": "密码",
-                    "scooter_id": "车辆 ID (可选)"
+                    "scooter_id": "车辆 ID (可选)",
+                    "sensors_selected": {
+                        "name": "选择要集成的传感器",
+                        "options": {
+                            "battery_charge": "电池电量",
+                            "is_connected": "是否连接 (电池)",
+                            "times_charged": "充电次数",
+                            "temp_descr": "温度描述",
+                            "temperature": "电池温度",
+                            "battery_grade": "电池健康度",
+                            "current_speed": "当前速度",
+                            "scooter_connected": "车辆是否连接",
+                            "is_charging": "是否充电中",
+                            "is_locked": "是否锁定",
+                            "time_left": "剩余时间",
+                            "estimated_mileage": "预计续航里程",
+                            "centre_ctrl_batt": "中控电池电量",
+                            "hdop": "水平精度因子",
+                            "longitude": "经度",
+                            "latitude": "纬度",
+                            "distance": "本次骑行距离",
+                            "riding_time": "本次骑行时间",
+                            "total_mileage": "总里程",
+                            "days_in_use": "已使用天数",
+                            "last_track_start_time": "上次骑行开始时间",
+                            "last_track_end_time": "上次骑行结束时间",
+                            "last_track_distance": "上次骑行距离",
+                            "last_track_average_speed": "上次骑行平均速度",
+                            "last_track_riding_time": "上次骑行时间",
+                            "last_track_thumb": "上次骑行轨迹缩略图 (摄像头)"
+                        }
+                    }
                 }
             }
         },
@@ -22,82 +53,82 @@
     },
     "entity": {
         "sensor": {
-            "BatteryCharge": {
+            "battery_charge": {
                 "name": "电池电量"
             },
-            "Isconnected": {
+            "is_connected": {
                 "name": "是否连接"
             },
-            "TimesCharged": {
+            "times_charged": {
                 "name": "充电次数"
             },
-            "temperatureDesc": {
+            "temp_descr": {
                 "name": "温度描述"
             },
-            "Temperature": {
+            "temperature": {
                 "name": "电池温度"
             },
-            "BatteryGrade": {
+            "battery_grade": {
                 "name": "电池健康度"
             },
-            "CurrentSpeed": {
+            "current_speed": {
                 "name": "当前速度"
             },
-            "ScooterConnected": {
+            "scooter_connected": {
                 "name": "车辆是否连接"
             },
-            "IsCharging": {
+            "is_charging": {
                 "name": "是否充电中"
             },
-            "IsLocked": {
+            "is_locked": {
                 "name": "是否锁定"
             },
-            "TimeLeft": {
+            "time_left": {
                 "name": "剩余时间"
             },
-            "EstimatedMileage": {
+            "estimated_mileage": {
                 "name": "预计续航里程"
             },
-            "centreCtrlBatt": {
+            "centre_ctrl_batt": {
                 "name": "中控电池电量"
             },
-            "HDOP": {
+            "hdop": {
                 "name": "水平精度因子"
             },
-            "Longitude": {
+            "longitude": {
                 "name": "经度"
             },
-            "Latitude": {
+            "latitude": {
                 "name": "纬度"
             },
-            "Distance": {
+            "distance": {
                 "name": "本次骑行距离"
             },
-            "RidingTime": {
+            "riding_time": {
                 "name": "本次骑行时间"
             },
-            "totalMileage": {
+            "total_mileage": {
                 "name": "总里程"
             },
-            "DaysInUse": {
+            "days_in_use": {
                 "name": "已使用天数"
             },
-            "LastTrackStartTime": {
+            "last_track_start_time": {
                 "name": "上次骑行开始时间"
             },
-            "LastTrackEndTime": {
+            "last_track_end_time": {
                 "name": "上次骑行结束时间"
             },
-            "LastTrackDistance": {
+            "last_track_distance": {
                 "name": "上次骑行距离"
             },
-            "LastTrackAverageSpeed": {
+            "last_track_average_speed": {
                 "name": "上次骑行平均速度"
             },
-            "LastTrackRidingtime": {
+            "last_track_riding_time": {
                 "name": "上次骑行时间"
             },
-            "LastTrackThumb": {
+            "last_track_thumb": {
                 "name": "上次骑行轨迹缩略图"
             }
         }
