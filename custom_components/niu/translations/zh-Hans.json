@@ -61,6 +61,15 @@
     },
     "entity": {
         "sensor": {
+            "sku_name": {
+                "name": "车型名称"
+            },
+            "product_type": {
+                "name": "产品类型"
+            },
+            "carframe_id": {
+                "name": "车架号"
+            },
             "battery_charge": {
                 "name": "电池电量"
             },

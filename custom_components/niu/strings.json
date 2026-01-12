@@ -60,6 +60,15 @@
     },
     "entity": {
         "sensor": {
+            "sku_name": {
+                "name": "SKU Name"
+            },
+            "product_type": {
+                "name": "Product Type"
+            },
+            "carframe_id": {
+                "name": "Carframe ID"
+            },
             "battery_charge": {
                 "name": "Battery Charge"
             },

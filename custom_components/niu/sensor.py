@@ -106,8 +106,51 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
             # Last Track Thumb sensor will be used as camera... now just skip it
             pass
 
+    # Always add vehicle metadata sensors (diagnostic). These are stable and useful
+    # for UI clarity without cluttering the primary sensor list.
+    devices.extend(
+        [
+            NiuVehicleInfoSensor(coordinator, api, "sku_name", "SkuName"),
+            NiuVehicleInfoSensor(coordinator, api, "product_type", "ProductType"),
+            NiuVehicleInfoSensor(coordinator, api, "carframe_id", "CarframeId"),
+        ]
+    )
+
     async_add_entities(devices)
     return True
+
+
+class NiuVehicleInfoSensor(CoordinatorEntity):
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, api: NiuApi, key: str, label: str) -> None:
+        super().__init__(coordinator)
+        self._api = api
+        self._sn = api.sn
+        self._key = key
+        self._label = label
+
+        self._attr_translation_key = key
+        self._attr_unique_id = f"sensor.niu_{self._sn}_{key}"
+        self.entity_id = _generate_entity_id(api.sensor_prefix, api.sn, label, key)
+
+    @property
+    def state(self):
+        return getattr(self._api, self._key, None)
+
+    @property
+    def device_info(self):
+        device_name = self._api.sensor_prefix if self._api.sensor_prefix else f"Niu Scooter {self._sn}"
+        identifier = self._sn if self._sn and self._sn.lower() != "none" else device_name
+        return {
+            "identifiers": {(DOMAIN, identifier)},
+            "name": device_name,
+            "manufacturer": "Niu",
+            "model": self._api.sku_name or self._api.product_type or "Niu Scooter",
+            "hw_version": self._api.product_type,
+            "serial_number": self._api.carframe_id,
+        }
 
 
 class NiuSensor(CoordinatorEntity):
@@ -221,7 +264,9 @@ class NiuSensor(CoordinatorEntity):
             "identifiers": {("niu", identifier)},
             "name": device_name,
             "manufacturer": "Niu",
-            "model": 1.0,
+            "model": self._api.sku_name or self._api.product_type or "Niu Scooter",
+            "hw_version": self._api.product_type,
+            "serial_number": self._api.carframe_id,
         }
 
     @property

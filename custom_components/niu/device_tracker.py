@@ -43,7 +43,9 @@ class NiuScooterTracker(CoordinatorEntity, TrackerEntity):
             "identifiers": {(DOMAIN, identifier)},
             "name": device_name,
             "manufacturer": "Niu",
-            "model": 1.0,
+            "model": self._api.sku_name or self._api.product_type or "Niu Scooter",
+            "hw_version": self._api.product_type,
+            "serial_number": self._api.carframe_id,
         }
 
     @property

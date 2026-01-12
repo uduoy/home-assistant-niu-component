@@ -35,6 +35,11 @@ class NiuApi:
         self.sn: str = ""
         self.sensor_prefix: str = ""
 
+        # Vehicle metadata (from vehicles_info)
+        self.sku_name: str | None = None
+        self.product_type: str | None = None
+        self.carframe_id: str | None = None
+
     async def async_init(self) -> None:
         """Initialize API asynchronously."""
         self.token = await self.async_get_token()
@@ -57,7 +62,12 @@ class NiuApi:
             return
             
         raw_sn = items[self.scooter_id].get("sn_id", "")
-        self.sensor_prefix = items[self.scooter_id].get("scooter_name", "")
+        vehicle = items[self.scooter_id] if isinstance(items[self.scooter_id], dict) else {}
+        self.sensor_prefix = vehicle.get("scooter_name", "")
+
+        self.sku_name = vehicle.get("sku_name")
+        self.product_type = vehicle.get("product_type")
+        self.carframe_id = vehicle.get("carframe_id")
         
         # Validate SN - treat "none" as invalid
         if not raw_sn or raw_sn.lower() == "none":
