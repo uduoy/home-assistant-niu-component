@@ -6,6 +6,7 @@ import logging
 import re
 
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
 
@@ -146,6 +147,25 @@ class NiuSensor(CoordinatorEntity):
         self._raw_state = None
         self._last_valid_state = None
         self._attr_translation_key = sensor_id # Use sensor_id for translation (lowercase with underscores)
+
+        # UI grouping: keep key day-to-day metrics in the main list, push noisy/secondary
+        # details (GPS precision/lat/lng/connectivity/track internals) into Diagnostics.
+        diagnostic_sensors = {
+            "Isconnected",
+            "ScooterConnected",
+            "HDOP",
+            "Longitude",
+            "Latitude",
+            "temperatureDesc",
+            "Distance",
+            "RidingTime",
+            "LastTrackStartTime",
+            "LastTrackEndTime",
+            "LastTrackRidingtime",
+        }
+        if name in diagnostic_sensors:
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+
         self.entity_id = _generate_entity_id(sensor_prefix, sn, name, sensor_id)
         super().__init__(coordinator)
 
