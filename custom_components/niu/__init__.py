@@ -8,7 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .const import CONF_AUTH, CONF_SENSORS, DOMAIN
+from .const import CONF_AUTH, CONF_SENSORS, DOMAIN, SENSOR_TYPE_BAT, SENSOR_TYPE_MOTO, SENSOR_TYPE_POS, SENSOR_TYPE_DIST, SENSOR_TYPE_OVERALL, SENSOR_TYPE_TRACK
 from .api import NiuApi
 
 _LOGGER = logging.getLogger(__name__)

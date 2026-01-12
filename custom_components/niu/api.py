@@ -6,6 +6,8 @@ import json
 from time import gmtime, strftime
 
 import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from .const import *
 
@@ -49,7 +51,7 @@ class NiuApi:
             "app_id": "niu_ktdrr960",
         }
         try:
-            r = requests.post(url, data=data, timeout=10)
+            r = requests.post(url, data=data, timeout=10, verify=False)
         except BaseException as e:
             print(e)
             return {}
@@ -65,7 +67,7 @@ class NiuApi:
         url = API_BASE_URL + path
         headers = {"token": str(token)}
         try:
-            r = requests.get(url, headers=headers, data=[], timeout=10)
+            r = requests.get(url, headers=headers, data=[], timeout=10, verify=False)
         except ConnectionError:
             return {}
         if r.status_code != 200:
@@ -90,7 +92,7 @@ class NiuApi:
             "user-agent": "manager/4.10.4 (android; IN2020 11);lang=zh-CN;clientIdentifier=Domestic;timezone=Asia/Shanghai;model=IN2020;deviceName=IN2020;ostype=android",
         }
         try:
-            r = requests.get(url, headers=headers, params=params, timeout=10)
+            r = requests.get(url, headers=headers, params=params, timeout=10, verify=False)
 
         except ConnectionError:
             return {}
@@ -113,7 +115,7 @@ class NiuApi:
         params = {}
         headers = {"token": str(token), "Accept-Language": "en-US"}
         try:
-            r = requests.post(url, headers=headers, params=params, data={"sn": sn}, timeout=10)
+            r = requests.post(url, headers=headers, params=params, data={"sn": sn}, timeout=10, verify=False)
         except ConnectionError:
             return {}
         if r.status_code != 200:
@@ -141,7 +143,8 @@ class NiuApi:
                 headers=headers,
                 params=params,
                 json={"index": "0", "pagesize": 10, "sn": sn},
-                timeout=10
+                timeout=10,
+                verify=False
             )
         except ConnectionError:
             return {}

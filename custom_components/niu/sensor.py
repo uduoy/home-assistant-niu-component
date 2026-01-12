@@ -8,6 +8,7 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import *
+from .api import NiuApi
 
 _LOGGER = logging.getLogger(__name__)
 
