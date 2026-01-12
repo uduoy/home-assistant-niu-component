@@ -29,6 +29,7 @@ class NiuApi:
         self.dataMoto: Optional[Dict[str, Any]] = None
         self.dataMotoInfo: Optional[Dict[str, Any]] = None
         self.dataTrackInfo: Optional[Dict[str, Any]] = None
+        self.dataVehiclesInfo: Optional[Dict[str, Any]] = None
         
         self.token: str = ""
         self.sn: str = ""
@@ -44,6 +45,7 @@ class NiuApi:
             
         api_uri = MOTOINFO_LIST_API_URI
         vehicles_info = await self.async_get_vehicles_info(api_uri)
+        self.dataVehiclesInfo = vehicles_info
         
         if not vehicles_info:
             _LOGGER.error("Failed to get vehicles info")

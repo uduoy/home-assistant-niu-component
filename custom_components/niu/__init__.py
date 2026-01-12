@@ -1,8 +1,11 @@
 """niu component."""
 from __future__ import annotations
 
+import json
 import logging
 from datetime import timedelta
+from pathlib import Path
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -12,6 +15,42 @@ from .const import CONF_AUTH, CONF_SENSORS, DOMAIN, SENSOR_TYPE_BAT, SENSOR_TYPE
 from .api import NiuApi
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _atomic_write_json(path: Path, payload: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+    tmp_path.replace(path)
+
+
+_SENSITIVE_KEYS = {
+    "token",
+    "access_token",
+    "refresh_token",
+    "password",
+    "passwd",
+    "secret",
+    "authorization",
+    "auth",
+}
+
+
+def _redact_sensitive(value: Any) -> Any:
+    """Recursively redact sensitive fields before persisting to disk."""
+    if isinstance(value, dict):
+        redacted: dict[str, Any] = {}
+        for k, v in value.items():
+            key = str(k).lower()
+            if key in _SENSITIVE_KEYS:
+                redacted[k] = "***REDACTED***"
+            else:
+                redacted[k] = _redact_sensitive(v)
+        return redacted
+    if isinstance(value, list):
+        return [_redact_sensitive(v) for v in value]
+    return value
 
 # Platforms that this integration supports
 PLATFORMS_SENSOR = ["sensor"]
@@ -99,8 +138,7 @@ class NiuDataUpdateCoordinator(DataUpdateCoordinator):
         await self.api.async_update_moto_info()
         await self.api.async_update_track_info()
 
-        # Return all sensor data in a structured format
-        return {
+        parsed = {
             SENSOR_TYPE_BAT: {
                 "batteryCharging": self.api.getDataBat("batteryCharging"),
                 "isConnected": self.api.getDataBat("isConnected"),
@@ -144,3 +182,27 @@ class NiuDataUpdateCoordinator(DataUpdateCoordinator):
             "sn": self.api.sn,
             "sensor_prefix": self.api.sensor_prefix,
         }
+
+        snapshot = {
+            "sn": self.api.sn,
+            "sensor_prefix": self.api.sensor_prefix,
+            "parsed": parsed,
+            "raw": {
+                "vehicles_info": getattr(self.api, "dataVehiclesInfo", None),
+                "battery_info": getattr(self.api, "dataBat", None),
+                "motor_index_info": getattr(self.api, "dataMoto", None),
+                "overall_tally": getattr(self.api, "dataMotoInfo", None),
+                "track_list": getattr(self.api, "dataTrackInfo", None),
+            },
+        }
+
+        snapshot = _redact_sensitive(snapshot)
+
+        # Save latest snapshot to a single file (overwrite), to avoid unbounded growth.
+        try:
+            snapshot_path = Path(self.hass.config.path("niu_last_response.json"))
+            await self.hass.async_add_executor_job(_atomic_write_json, snapshot_path, snapshot)
+        except Exception as err:
+            _LOGGER.debug("Failed to write niu_last_response.json: %s", err)
+
+        return parsed
