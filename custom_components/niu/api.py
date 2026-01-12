@@ -10,6 +10,7 @@ from time import gmtime, strftime
 from typing import Any, Dict, Optional
 
 import aiohttp
+from aiohttp import ClientTimeout
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import *
@@ -74,10 +75,10 @@ class NiuApi:
         
         try:
             session = async_get_clientsession(self.hass, verify_ssl=False)
-            async with session.post(url, data=data, timeout=10) as response:
+            async with session.post(url, data=data, timeout=ClientTimeout(total=10)) as response:
                 if response.status != 200:
                     _LOGGER.error("Login failed with status %d", response.status)
-                    return ""
+                    return None
                     
                 response_text = await response.text()
                 token_data = json.loads(response_text)
@@ -85,7 +86,7 @@ class NiuApi:
                 
         except (aiohttp.ClientError, asyncio.TimeoutError, json.JSONDecodeError) as err:
             _LOGGER.error("Error getting token: %s", err)
-            return ""
+            return None
 
     async def async_get_vehicles_info(self, path: str) -> Optional[Dict[str, Any]]:
         """Get vehicles information asynchronously."""
@@ -98,7 +99,7 @@ class NiuApi:
         
         try:
             session = async_get_clientsession(self.hass, verify_ssl=False)
-            async with session.get(url, headers=headers, timeout=10) as response:
+            async with session.get(url, headers=headers, timeout=ClientTimeout(total=10)) as response:
                 if response.status != 200:
                     _LOGGER.debug("Vehicles info request failed with status %d", response.status)
                     return None
@@ -125,7 +126,7 @@ class NiuApi:
         
         try:
             session = async_get_clientsession(self.hass, verify_ssl=False)
-            async with session.get(url, headers=headers, params=params, timeout=10) as response:
+            async with session.get(url, headers=headers, params=params, timeout=ClientTimeout(total=10)) as response:
                 if response.status != 200:
                     _LOGGER.debug("Get info request failed with status %d", response.status)
                     return None
@@ -152,7 +153,7 @@ class NiuApi:
         
         try:
             session = async_get_clientsession(self.hass, verify_ssl=False)
-            async with session.post(url, headers=headers, data={"sn": self.sn}, timeout=10) as response:
+            async with session.post(url, headers=headers, data={"sn": self.sn}, timeout=ClientTimeout(total=10)) as response:
                 if response.status != 200:
                     _LOGGER.debug("Post info request failed with status %d", response.status)
                     return None
@@ -187,7 +188,7 @@ class NiuApi:
                 url, 
                 headers=headers, 
                 json={"index": "0", "pagesize": 10, "sn": self.sn},
-                timeout=10
+                timeout=ClientTimeout(total=10)
             ) as response:
                 if response.status != 200:
                     _LOGGER.debug("Track info request failed with status %d", response.status)

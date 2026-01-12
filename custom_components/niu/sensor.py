@@ -28,6 +28,11 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
     coordinator = coordinator_data["coordinator"]
     api = coordinator_data["api"]
 
+    # Validate SN before creating entities
+    if not api.sn:
+        _LOGGER.error("Cannot create sensor entities: SN not available")
+        return False
+
     # add sensors
     devices = []
     for sensor in sensors_selected:
@@ -75,7 +80,10 @@ class NiuSensor(CoordinatorEntity):
         sn,
         icon,
     ):
-        self._unique_id = "sensor.niu_scooter_" + sn + "_" + sensor_id
+        if not sn:
+            raise ValueError(f"Invalid SN provided for sensor {sensor_id}")
+        self._sn = sn
+        self._unique_id = f"sensor.niu_{sn}_{sensor_id}"
         # self._name = (
         #     "NIU Scooter " + sensor_prefix + " " + name
         # )  # Scooter name as sensor prefix - REMOVED
@@ -110,10 +118,7 @@ class NiuSensor(CoordinatorEntity):
         if self.coordinator.data is None:
             return self._state
 
-        try:
-            return self.coordinator.data[self._sensor_grp][self._id_name]
-        except (KeyError, TypeError):
-            return self._state
+        return self.coordinator.data.get(self._sensor_grp, {}).get(self._id_name, self._state)
 
     @property
     def device_class(self):
@@ -135,19 +140,16 @@ class NiuSensor(CoordinatorEntity):
             if self.coordinator.data is None:
                 return {}
 
-            try:
                 return {
-                    "bmsId": self.coordinator.data[SENSOR_TYPE_BAT].get("bmsId"),
-                    "latitude": self.coordinator.data[SENSOR_TYPE_POS].get("lat"),
-                    "longitude": self.coordinator.data[SENSOR_TYPE_POS].get("lng"),
-                    "time": self.coordinator.data[SENSOR_TYPE_DIST].get("time"),
-                    "range": self.coordinator.data[SENSOR_TYPE_MOTO].get("estimatedMileage"),
-                    "battery": self.coordinator.data[SENSOR_TYPE_BAT].get("batteryCharging"),
-                    "battery_grade": self.coordinator.data[SENSOR_TYPE_BAT].get("gradeBattery"),
-                    "centre_ctrl_batt": self.coordinator.data[SENSOR_TYPE_MOTO].get("centreCtrlBattery"),
+                    "bmsId": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("bmsId"),
+                    "latitude": self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lat"),
+                    "longitude": self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lng"),
+                    "time": self.coordinator.data.get(SENSOR_TYPE_DIST, {}).get("time"),
+                    "range": self.coordinator.data.get(SENSOR_TYPE_MOTO, {}).get("estimatedMileage"),
+                    "battery": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("batteryCharging"),
+                    "battery_grade": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("gradeBattery"),
+                    "centre_ctrl_batt": self.coordinator.data.get(SENSOR_TYPE_MOTO, {}).get("centreCtrlBattery"),
                 }
-            except (KeyError, TypeError):
-                return {}
 
     @property
     def available(self):

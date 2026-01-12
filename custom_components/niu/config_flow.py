@@ -45,9 +45,9 @@ class NiuAuthenticator:
         api = NiuApi(hass, self.username, self.password, self.scooter_id)
         try:
             token = await api.async_get_token()
-            return token != ""
+            return token is not None
         except Exception:
-            return False
+            return None
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):

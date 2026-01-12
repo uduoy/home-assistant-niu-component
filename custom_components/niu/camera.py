@@ -30,6 +30,11 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
     coordinator = coordinator_data["coordinator"]
     api = coordinator_data["api"]
 
+    # Validate SN before creating entities
+    if not api.sn:
+        _LOGGER.error("Cannot create camera entity: SN not available")
+        return False
+
     camera_name = api.sensor_prefix + " Last Track Camera"
 
     entry = {
@@ -42,15 +47,21 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
         "limit_refetch_to_url_change": False,
         "content_type": "image/jpeg",
         "framerate": 2,
-        "verify_ssl": True,
+        "verify_ssl": False,
     }
     async_add_entities([LastTrackCamera(hass, api, coordinator, entry, camera_name, camera_name)])
 
 
 class LastTrackCamera(GenericCamera):
+    _attr_has_entity_name = True
+    _attr_translation_key = "last_track_camera"
+    
     def __init__(self, hass, api, coordinator, device_info, identifier: str, title: str) -> None:
+        if not api.sn:
+            raise ValueError("Cannot create camera entity: SN not available")
         self._api = api
         self._coordinator = coordinator
+        self._sn = api.sn
         super().__init__(hass, device_info, identifier, title)
 
     @property
@@ -65,10 +76,14 @@ class LastTrackCamera(GenericCamera):
         return self._last_image != b""
 
     @property
+    def unique_id(self):
+        return f"camera.niu_{self._sn}_last_track"
+
+    @property
     def device_info(self):
-        device_name = "Niu E-scooter"
+        device_name = f"Niu Scooter {self._sn}"
         dev = {
-            "identifiers": {("niu", device_name)},
+            "identifiers": {("niu", self._sn)},
             "name": device_name,
             "manufacturer": "Niu",
             "model": 1.0,
@@ -81,10 +96,9 @@ class LastTrackCamera(GenericCamera):
         if self._coordinator.data is None:
             return self._last_image
 
-        try:
-            last_track_url = self._coordinator.data[SENSOR_TYPE_TRACK].get("track_thumb")
-        except (KeyError, TypeError):
-            _LOGGER.error("Error getting track_thumb from coordinator data")
+        last_track_url = self._coordinator.data.get(SENSOR_TYPE_TRACK, {}).get("track_thumb")
+        if not last_track_url:
+            _LOGGER.debug("No track_thumb URL available")
             return self._last_image
 
         if last_track_url == self._last_url and self._previous_image != b"":
