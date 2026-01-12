@@ -49,26 +49,32 @@ class NiuApi:
             "app_id": "niu_ktdrr960",
         }
         try:
-            r = requests.post(url, data=data)
+            r = requests.post(url, data=data, timeout=10)
         except BaseException as e:
             print(e)
-            return False
-        data = json.loads(r.content.decode())
-        return data["data"]["token"]["access_token"]
+            return {}
+        try:
+            data = json.loads(r.content.decode())
+            return data["data"]["token"]["access_token"]
+        except (KeyError, json.JSONDecodeError):
+            return ""
 
     def get_vehicles_info(self, path):
         token = self.token
 
         url = API_BASE_URL + path
-        headers = {"token": token}
+        headers = {"token": str(token)}
         try:
-            r = requests.get(url, headers=headers, data=[])
+            r = requests.get(url, headers=headers, data=[], timeout=10)
         except ConnectionError:
-            return False
+            return {}
         if r.status_code != 200:
-            return False
-        data = json.loads(r.content.decode())
-        return data
+            return {}
+        try:
+            data = json.loads(r.content.decode())
+            return data
+        except json.JSONDecodeError:
+            return {}
 
     def get_info(
         self,
@@ -80,20 +86,23 @@ class NiuApi:
 
         params = {"sn": sn}
         headers = {
-            "token": token,
+            "token": str(token),
             "user-agent": "manager/4.10.4 (android; IN2020 11);lang=zh-CN;clientIdentifier=Domestic;timezone=Asia/Shanghai;model=IN2020;deviceName=IN2020;ostype=android",
         }
         try:
-            r = requests.get(url, headers=headers, params=params)
+            r = requests.get(url, headers=headers, params=params, timeout=10)
 
         except ConnectionError:
-            return False
+            return {}
         if r.status_code != 200:
-            return False
-        data = json.loads(r.content.decode())
-        if data["status"] != 0:
-            return False
-        return data
+            return {}
+        try:
+            data = json.loads(r.content.decode())
+            if data.get("status") != 0:
+                return {}
+            return data
+        except (json.JSONDecodeError, KeyError):
+            return {}
 
     def post_info(
         self,
@@ -102,24 +111,27 @@ class NiuApi:
         sn, token = self.sn, self.token
         url = API_BASE_URL + path
         params = {}
-        headers = {"token": token, "Accept-Language": "en-US"}
+        headers = {"token": str(token), "Accept-Language": "en-US"}
         try:
-            r = requests.post(url, headers=headers, params=params, data={"sn": sn})
+            r = requests.post(url, headers=headers, params=params, data={"sn": sn}, timeout=10)
         except ConnectionError:
-            return False
+            return {}
         if r.status_code != 200:
-            return False
-        data = json.loads(r.content.decode())
-        if data["status"] != 0:
-            return False
-        return data
+            return {}
+        try:
+            data = json.loads(r.content.decode())
+            if data.get("status") != 0:
+                return {}
+            return data
+        except (json.JSONDecodeError, KeyError):
+            return {}
 
     def post_info_track(self, path):
         sn, token = self.sn, self.token
         url = API_BASE_URL + path
         params = {}
         headers = {
-            "token": token,
+            "token": str(token),
             "Accept-Language": "en-US",
             "User-Agent": "manager/1.0.0 (identifier);clientIdentifier=identifier",
         }
@@ -129,44 +141,78 @@ class NiuApi:
                 headers=headers,
                 params=params,
                 json={"index": "0", "pagesize": 10, "sn": sn},
+                timeout=10
             )
         except ConnectionError:
-            return False
+            return {}
         if r.status_code != 200:
-            return False
-        data = json.loads(r.content.decode())
-        if data["status"] != 0:
-            return False
-        return data
+            return {}
+        try:
+            data = json.loads(r.content.decode())
+            if data.get("status") != 0:
+                return {}
+            return data
+        except (json.JSONDecodeError, KeyError):
+            return {}
 
-    def getDataBat(self, id_field): 
-        return self.dataBat["data"]["batteries"]["compartmentA"][id_field]
+    def getDataBat(self, id_field):
+        if not isinstance(self.dataBat, dict):
+            return None
+        try:
+            return self.dataBat["data"]["batteries"]["compartmentA"][id_field]
+        except (KeyError, TypeError):
+            return None
 
     def getDataMoto(self, id_field):
-        return self.dataMoto["data"][id_field]
+        if not isinstance(self.dataMoto, dict):
+            return None
+        try:
+            return self.dataMoto["data"][id_field]
+        except (KeyError, TypeError):
+            return None
 
     def getDataDist(self, id_field):
-        return self.dataMoto["data"]["lastTrack"][id_field]
+        if not isinstance(self.dataMoto, dict):
+            return None
+        try:
+            return self.dataMoto["data"]["lastTrack"][id_field]
+        except (KeyError, TypeError):
+            return None
 
     def getDataPos(self, id_field):
-        return self.dataMoto["data"]["postion"][id_field]
+        if not isinstance(self.dataMoto, dict):
+            return None
+        try:
+            return self.dataMoto["data"]["postion"][id_field]
+        except (KeyError, TypeError):
+            return None
 
     def getDataOverall(self, id_field):
-        return self.dataMotoInfo["data"][id_field]
+        if not isinstance(self.dataMotoInfo, dict):
+            return None
+        try:
+            return self.dataMotoInfo["data"][id_field]
+        except (KeyError, TypeError):
+            return None
 
     def getDataTrack(self, id_field):
-        if id_field == "startTime" or id_field == "endTime":
-            return datetime.fromtimestamp(
-                (self.dataTrackInfo["data"][0][id_field]) / 1000
-            ).strftime("%Y-%m-%d %H:%M:%S")
-        if id_field == "ridingtime":
-            return strftime("%H:%M:%S", gmtime(self.dataTrackInfo["data"][0][id_field]))
-        if id_field == "track_thumb":
-            thumburl = self.dataTrackInfo["data"][0][id_field].replace(
-                "app-api.niucache.com", "app-api.niu.com"
-            )
-            return thumburl.replace("/track/thumb/", "/track/overseas/thumb/")
-        return self.dataTrackInfo["data"][0][id_field]
+        if not isinstance(self.dataTrackInfo, dict):
+            return None
+        try:
+            if id_field == "startTime" or id_field == "endTime":
+                return datetime.fromtimestamp(
+                    (self.dataTrackInfo["data"][0][id_field]) / 1000
+                ).strftime("%Y-%m-%d %H:%M:%S")
+            if id_field == "ridingtime":
+                return strftime("%H:%M:%S", gmtime(self.dataTrackInfo["data"][0][id_field]))
+            if id_field == "track_thumb":
+                thumburl = self.dataTrackInfo["data"][0][id_field].replace(
+                    "app-api.niucache.com", "app-api.niu.com"
+                )
+                return thumburl.replace("/track/thumb/", "/track/overseas/thumb/")
+            return self.dataTrackInfo["data"][0][id_field]
+        except (KeyError, TypeError, IndexError):
+            return None
 
     def updateBat(self):
         self.dataBat = self.get_info(MOTOR_BATTERY_API_URI)
