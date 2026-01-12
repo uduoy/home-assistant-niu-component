@@ -2,13 +2,11 @@
     Support for Niu Scooters by Marcel Westra.
     Asynchronous version implementation by Giovanni P. (@pikka97)
 """
-from datetime import timedelta
 import logging
 
 from homeassistant.helpers.entity import Entity
-from homeassistant.util import Throttle
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .api import NiuApi
 from .const import *
 
 _LOGGER = logging.getLogger(__name__)
@@ -22,13 +20,12 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
         )
         return False
 
-    username = niu_auth[CONF_USERNAME]
-    password = niu_auth[CONF_PASSWORD]
-    scooter_id = niu_auth[CONF_SCOOTER_ID]
     sensors_selected = niu_auth[CONF_SENSORS]
 
-    api = NiuApi(username, password, scooter_id)
-    await hass.async_add_executor_job(api.initApi)
+    # Get coordinator and api from hass.data
+    coordinator_data = hass.data[DOMAIN][entry.entry_id]
+    coordinator = coordinator_data["coordinator"]
+    api = coordinator_data["api"]
 
     # add sensors
     devices = []
@@ -37,8 +34,9 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
             sensor_config = SENSOR_TYPES[sensor]
             devices.append(
                 NiuSensor(
-                    hass,
+                    coordinator,
                     api,
+                    entry.entry_id,
                     sensor,
                     sensor_config[0],
                     sensor_config[1],
@@ -58,13 +56,14 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
     return True
 
 
-class NiuSensor(Entity):
+class NiuSensor(CoordinatorEntity):
     _attr_has_entity_name = True
 
     def __init__(
         self,
-        hass,
+        coordinator,
         api: NiuApi,
+        entry_id,
         name, # This 'name' parameter (from AVAILABLE_SENSORS) is no longer used for the entity name
         sensor_id,
         uom,
@@ -79,7 +78,6 @@ class NiuSensor(Entity):
         # self._name = (
         #     "NIU Scooter " + sensor_prefix + " " + name
         # )  # Scooter name as sensor prefix - REMOVED
-        self._hass = hass
         self._uom = uom
         self._api = api
         self._device_class = device_class
@@ -88,6 +86,7 @@ class NiuSensor(Entity):
         self._icon = icon
         self._state = 0
         self._attr_translation_key = sensor_id # Use sensor_id for translation
+        super().__init__(coordinator)
 
     @property
     def unique_id(self):
@@ -107,7 +106,13 @@ class NiuSensor(Entity):
 
     @property
     def state(self):
-        return self._state
+        if self.coordinator.data is None:
+            return self._state
+
+        try:
+            return self.coordinator.data[self._sensor_grp][self._id_name]
+        except (KeyError, TypeError):
+            return self._state
 
     @property
     def device_class(self):
@@ -126,41 +131,24 @@ class NiuSensor(Entity):
     @property
     def extra_state_attributes(self):
         if self._sensor_grp == SENSOR_TYPE_MOTO and self._id_name == "isConnected":
-            return {
-                "bmsId": self._api.getDataBat("bmsId"),
-                "latitude": self._api.getDataPos("lat"),
-                "longitude": self._api.getDataPos("lng"),
-                "gsm": self._api.getDataMoto("gsm"),
-                "gps": self._api.getDataMoto("gps"),
-                "time": self._api.getDataDist("time"),
-                "range": self._api.getDataMoto("estimatedMileage"),
-                "battery": self._api.getDataBat("batteryCharging"),
-                "battery_grade": self._api.getDataBat("gradeBattery"),
-                "centre_ctrl_batt": self._api.getDataMoto("centreCtrlBattery"),
-            }
+            if self.coordinator.data is None:
+                return {}
 
-    @Throttle(timedelta(minutes=15))
-    async def async_update(self):
-        if self._sensor_grp == SENSOR_TYPE_BAT:
-            await self._hass.async_add_executor_job(self._api.updateBat)
-            self._state = self._api.getDataBat(self._id_name)
+            try:
+                return {
+                    "bmsId": self.coordinator.data[SENSOR_TYPE_BAT].get("bmsId"),
+                    "latitude": self.coordinator.data[SENSOR_TYPE_POS].get("lat"),
+                    "longitude": self.coordinator.data[SENSOR_TYPE_POS].get("lng"),
+                    "time": self.coordinator.data[SENSOR_TYPE_DIST].get("time"),
+                    "range": self.coordinator.data[SENSOR_TYPE_MOTO].get("estimatedMileage"),
+                    "battery": self.coordinator.data[SENSOR_TYPE_BAT].get("batteryCharging"),
+                    "battery_grade": self.coordinator.data[SENSOR_TYPE_BAT].get("gradeBattery"),
+                    "centre_ctrl_batt": self.coordinator.data[SENSOR_TYPE_MOTO].get("centreCtrlBattery"),
+                }
+            except (KeyError, TypeError):
+                return {}
 
-        elif self._sensor_grp == SENSOR_TYPE_MOTO:
-            await self._hass.async_add_executor_job(self._api.updateMoto)
-            self._state = self._api.getDataMoto(self._id_name)
-
-        elif self._sensor_grp == SENSOR_TYPE_POS:
-            await self._hass.async_add_executor_job(self._api.updateMoto)
-            self._state = self._api.getDataPos(self._id_name)
-
-        elif self._sensor_grp == SENSOR_TYPE_DIST:
-            await self._hass.async_add_executor_job(self._api.updateBat)
-            self._state = self._api.getDataDist(self._id_name)
-
-        elif self._sensor_grp == SENSOR_TYPE_OVERALL:
-            await self._hass.async_add_executor_job(self._api.updateMotoInfo)
-            self._state = self._api.getDataOverall(self._id_name)
-
-        elif self._sensor_grp == SENSOR_TYPE_TRACK:
-            await self._hass.async_add_executor_job(self._api.updateTrackInfo)
-            self._state = self._api.getDataTrack(self._id_name)
+    @property
+    def available(self):
+        """Return if entity is available."""
+        return self.coordinator.last_update_success

@@ -25,12 +25,10 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
         )
         return False
 
-    username = niu_auth[CONF_USERNAME]
-    password = niu_auth[CONF_PASSWORD]
-    scooter_id = niu_auth[CONF_SCOOTER_ID]
-
-    api = NiuApi(username, password, scooter_id)
-    await hass.async_add_executor_job(api.initApi)
+    # Get coordinator and api from hass.data
+    coordinator_data = hass.data[DOMAIN][entry.entry_id]
+    coordinator = coordinator_data["coordinator"]
+    api = coordinator_data["api"]
 
     camera_name = api.sensor_prefix + " Last Track Camera"
 
@@ -46,12 +44,13 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
         "framerate": 2,
         "verify_ssl": True,
     }
-    async_add_entities([LastTrackCamera(hass, api, entry, camera_name, camera_name)])
+    async_add_entities([LastTrackCamera(hass, api, coordinator, entry, camera_name, camera_name)])
 
 
 class LastTrackCamera(GenericCamera):
-    def __init__(self, hass, api, device_info, identifier: str, title: str) -> None:
+    def __init__(self, hass, api, coordinator, device_info, identifier: str, title: str) -> None:
         self._api = api
+        self._coordinator = coordinator
         super().__init__(hass, device_info, identifier, title)
 
     @property
@@ -79,8 +78,14 @@ class LastTrackCamera(GenericCamera):
     async def async_camera_image(
         self, width: int | None = None, height: int | None = None
     ) -> bytes | None:
-        get_last_track = lambda: self._api.getDataTrack("track_thumb")
-        last_track_url = await self.hass.async_add_executor_job(get_last_track)
+        if self._coordinator.data is None:
+            return self._last_image
+
+        try:
+            last_track_url = self._coordinator.data[SENSOR_TYPE_TRACK].get("track_thumb")
+        except (KeyError, TypeError):
+            _LOGGER.error("Error getting track_thumb from coordinator data")
+            return self._last_image
 
         if last_track_url == self._last_url and self._previous_image != b"":
             # The path image is the same as before so the image is the same:
