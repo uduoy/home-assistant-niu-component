@@ -3,14 +3,29 @@
     Asynchronous version implementation by Giovanni P. (@pikka97)
 """
 import logging
+import re
 
-from homeassistant.helpers.entity import Entity
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import slugify
 
 from .const import *
 from .api import NiuApi
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _generate_entity_id(sensor_prefix: str | None, sn: str | None, sensor_name: str, sensor_id: str | None) -> str:
+    """Build a deterministic entity_id using scooter name and sensor key."""
+    device_source = sensor_prefix or sn or "niu_scooter"
+    slug_device = slugify(device_source) or "niu_scooter"
+
+    # Prefer CamelCase sensor name, fallback to snake_case id and generic label
+    name_source = sensor_name or sensor_id or "sensor"
+    camel_to_snake = re.sub(r"(?<!^)(?=[A-Z])", "_", name_source)
+    slug_sensor = slugify(camel_to_snake or name_source) or "sensor"
+
+    return f"sensor.{slug_device}_{slug_sensor}"
 
 
 async def async_setup_entry(hass, entry, async_add_entities) -> None:
@@ -27,17 +42,49 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
     coordinator_data = hass.data[DOMAIN][entry.entry_id]
     coordinator = coordinator_data["coordinator"]
     api = coordinator_data["api"]
+    
+    _LOGGER.debug("Setting up sensors: sn=%s, sensor_prefix=%s", api.sn, api.sensor_prefix)
 
     # Validate SN before creating entities
-    if not api.sn:
-        _LOGGER.error("Cannot create sensor entities: SN not available")
+    if not api.sn or api.sn.lower() == "none":
+        _LOGGER.error("Cannot create sensor entities: SN not available or invalid (sn=%s)", api.sn)
         return False
+
+    entity_registry = er.async_get(hass)
 
     # add sensors
     devices = []
     for sensor in sensors_selected:
         if sensor != "LastTrackThumb":
             sensor_config = SENSOR_TYPES[sensor]
+            desired_entity_id = _generate_entity_id(
+                api.sensor_prefix,
+                api.sn,
+                sensor,
+                sensor_config[0],
+            )
+            unique_id = f"sensor.niu_{api.sn}_{sensor}"
+
+            current_entity_id = entity_registry.async_get_entity_id("sensor", DOMAIN, unique_id)
+            if current_entity_id and current_entity_id != desired_entity_id:
+                try:
+                    entity_registry.async_update_entity(
+                        current_entity_id,
+                        new_entity_id=desired_entity_id,
+                    )
+                    _LOGGER.debug(
+                        "Renamed entity %s -> %s for sensor %s",
+                        current_entity_id,
+                        desired_entity_id,
+                        sensor,
+                    )
+                except ValueError:
+                    _LOGGER.warning(
+                        "Unable to rename entity %s to %s (already in use)",
+                        current_entity_id,
+                        desired_entity_id,
+                    )
+
             devices.append(
                 NiuSensor(
                     coordinator,
@@ -70,7 +117,7 @@ class NiuSensor(CoordinatorEntity):
         coordinator,
         api: NiuApi,
         entry_id,
-        name, # This 'name' parameter (from AVAILABLE_SENSORS) is no longer used for the entity name
+        name, # This 'name' parameter (from AVAILABLE_SENSORS) is used as sensor_name for unique_id
         sensor_id,
         uom,
         id_name,
@@ -80,10 +127,12 @@ class NiuSensor(CoordinatorEntity):
         sn,
         icon,
     ):
-        if not sn:
-            raise ValueError(f"Invalid SN provided for sensor {sensor_id}")
+        if not sn or sn.lower() == "none":
+            raise ValueError(f"Invalid SN provided for sensor {name}")
         self._sn = sn
-        self._unique_id = f"sensor.niu_{sn}_{sensor_id}"
+        self._sensor_name = name  # e.g., "TimesCharged"
+        self._unique_id = f"sensor.niu_{sn}_{name}"
+        _LOGGER.debug("Creating sensor: unique_id=%s, sn=%s, name=%s", self._unique_id, sn, name)
         # self._name = (
         #     "NIU Scooter " + sensor_prefix + " " + name
         # )  # Scooter name as sensor prefix - REMOVED
@@ -94,7 +143,8 @@ class NiuSensor(CoordinatorEntity):
         self._sensor_grp = sensor_grp  # info field for choosing the right URL
         self._icon = icon
         self._state = 0
-        self._attr_translation_key = sensor_id # Use sensor_id for translation
+        self._attr_translation_key = sensor_id # Use sensor_id for translation (lowercase with underscores)
+        self.entity_id = _generate_entity_id(sensor_prefix, sn, name, sensor_id)
         super().__init__(coordinator)
 
     @property
@@ -126,9 +176,12 @@ class NiuSensor(CoordinatorEntity):
 
     @property
     def device_info(self):
-        device_name = "Niu E-scooter"
+        # Use sensor_prefix (scooter name) if available, otherwise use SN
+        device_name = self._api.sensor_prefix if self._api.sensor_prefix else f"Niu Scooter {self._sn}"
+        # Use SN as primary identifier, fallback to device_name
+        identifier = self._sn if self._sn and self._sn.lower() != "none" else device_name
         return {
-            "identifiers": {("niu", device_name)},
+            "identifiers": {("niu", identifier)},
             "name": device_name,
             "manufacturer": "Niu",
             "model": 1.0,
@@ -139,17 +192,18 @@ class NiuSensor(CoordinatorEntity):
         if self._sensor_grp == SENSOR_TYPE_MOTO and self._id_name == "isConnected":
             if self.coordinator.data is None:
                 return {}
-
-                return {
-                    "bmsId": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("bmsId"),
-                    "latitude": self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lat"),
-                    "longitude": self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lng"),
-                    "time": self.coordinator.data.get(SENSOR_TYPE_DIST, {}).get("time"),
-                    "range": self.coordinator.data.get(SENSOR_TYPE_MOTO, {}).get("estimatedMileage"),
-                    "battery": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("batteryCharging"),
-                    "battery_grade": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("gradeBattery"),
-                    "centre_ctrl_batt": self.coordinator.data.get(SENSOR_TYPE_MOTO, {}).get("centreCtrlBattery"),
-                }
+            
+            return {
+                "bmsId": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("bmsId"),
+                "latitude": self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lat"),
+                "longitude": self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lng"),
+                "time": self.coordinator.data.get(SENSOR_TYPE_DIST, {}).get("time"),
+                "range": self.coordinator.data.get(SENSOR_TYPE_MOTO, {}).get("estimatedMileage"),
+                "battery": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("batteryCharging"),
+                "battery_grade": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("gradeBattery"),
+                "centre_ctrl_batt": self.coordinator.data.get(SENSOR_TYPE_MOTO, {}).get("centreCtrlBattery"),
+            }
+        return {}
 
     @property
     def available(self):

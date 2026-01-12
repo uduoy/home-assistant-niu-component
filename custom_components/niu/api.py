@@ -54,11 +54,18 @@ class NiuApi:
             _LOGGER.error("Scooter ID %d not found in vehicles list", self.scooter_id)
             return
             
-        self.sn = items[self.scooter_id].get("sn_id", "")
+        raw_sn = items[self.scooter_id].get("sn_id", "")
         self.sensor_prefix = items[self.scooter_id].get("scooter_name", "")
         
+        # Validate SN - treat "none" as invalid
+        if not raw_sn or raw_sn.lower() == "none":
+            _LOGGER.error("Invalid scooter SN received: %s", raw_sn)
+            self.sn = ""
+        else:
+            self.sn = raw_sn
+        
         if not self.sn:
-            _LOGGER.error("Failed to get scooter SN")
+            _LOGGER.error("Failed to get valid scooter SN")
             return
 
     async def async_get_token(self) -> str:
@@ -121,7 +128,7 @@ class NiuApi:
         params = {"sn": self.sn}
         headers = {
             "token": str(self.token),
-            "user-agent": "manager/4.10.4 (android; IN2020 11);lang=zh-CN;clientIdentifier=Domestic;timezone=Asia/Shanghai;model=IN2020;deviceName=IN2020;ostype=android",
+            "user-agent": "manager/4.10.4 (android; IN2020 11);lang=zh-CN;client-agentIdentifier=Domestic;timezone=Asia/Shanghai;model=IN2020;deviceName=IN2020;ostype=android",
         }
         
         try:

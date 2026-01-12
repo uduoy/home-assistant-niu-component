@@ -13,9 +13,9 @@ from .api import NiuApi
 
 _LOGGER = logging.getLogger(__name__)
 
-# TODO List the platforms that you want to support.
-# For your initial PR, limit it to 1 platform.
-PLATFORMS = ["sensor"]
+# Platforms that this integration supports
+PLATFORMS_SENSOR = ["sensor"]
+PLATFORMS_CAMERA = ["camera"]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -30,8 +30,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.error("You did NOT selected any sensor... cant setup the integration..")
         return False
 
+    # Build platform list dynamically based on selected sensors
+    platforms = list(PLATFORMS_SENSOR)
     if "LastTrackThumb" in sensors_selected:
-        PLATFORMS.append("camera")
+        platforms.extend(PLATFORMS_CAMERA)
 
     username = niu_auth["username"]
     password = niu_auth["password"]
@@ -53,9 +55,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "coordinator": coordinator,
         "api": api,
         "sensors_selected": sensors_selected,
+        "platforms": platforms,
     }
 
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    await hass.config_entries.async_forward_entry_setups(entry, platforms)
 
     return True
 
@@ -63,7 +66,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     if DOMAIN in hass.data and entry.entry_id in hass.data[DOMAIN]:
-        unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+        platforms = hass.data[DOMAIN][entry.entry_id].get("platforms", PLATFORMS_SENSOR)
+        unload_ok = await hass.config_entries.async_unload_platforms(entry, platforms)
         if unload_ok:
             hass.data[DOMAIN].pop(entry.entry_id)
             if not hass.data[DOMAIN]:

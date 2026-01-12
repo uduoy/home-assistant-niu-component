@@ -14,8 +14,8 @@ Now this integration is _asynchronous_ and it is easy installable via config flo
 
 With the thanks to pikka97 !!!
 
-## Version 2.2.0 - AI-Enhanced Modernization
-This version includes a comprehensive refactor performed by AI assistance to eliminate UI lag and improve reliability:
+## Version 2.2.2 - Entity ID Clean-up
+This release aligns the custom component with Home Assistant naming conventions and removes temporary debugging output:
 
 ### Major Improvements:
 - **Async Architecture**: Replaced synchronous `requests` with asynchronous `aiohttp` for non-blocking I/O
@@ -23,6 +23,8 @@ This version includes a comprehensive refactor performed by AI assistance to eli
 - **Defensive Programming**: Added robust error handling with `.get()` methods to avoid crashes on missing data
 - **SSL Compatibility**: Temporary workaround for SSL certificate verification issues (`verify_ssl=False`)
 - **Modern Codebase**: Full migration to async/await patterns compatible with Home Assistant's event loop
+- **Deterministic Entity IDs**: Sensor IDs now incorporate the scooter name and sensor key (`sensor.<scooter>_<sensor>`) to match server-provided data
+- **Clean Configuration**: Removed temporary debug payload dumps and aligned translation keys/strings for sensors and camera
 
 ### Technical Details:
 - **API Client**: Complete rewrite of `api.py` using async methods

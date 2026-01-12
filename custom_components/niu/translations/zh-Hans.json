@@ -139,6 +139,11 @@
             "last_track_thumb": {
                 "name": "上次骑行轨迹缩略图"
             }
+        },
+        "camera": {
+            "last_track_camera": {
+                "name": "上次骑行轨迹摄像头"
+            }
         }
     }
 }

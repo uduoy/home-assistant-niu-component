@@ -205,9 +205,9 @@ SENSOR_TYPES = {
         "battery",
         "mdi:car-cruise-control",
     ],
-    "HDOP": ["hdp", "", "hdop", SENSOR_TYPE_MOTO, "none", "mdi:map-marker"],
-    "Longitude": ["long", "", "lng", SENSOR_TYPE_POS, "none", "mdi:map-marker"],
-    "Latitude": ["lat", "", "lat", SENSOR_TYPE_POS, "none", "mdi:map-marker"],
+    "HDOP": ["hdop", "", "hdop", SENSOR_TYPE_MOTO, "none", "mdi:map-marker"],
+    "Longitude": ["longitude", "", "lng", SENSOR_TYPE_POS, "none", "mdi:map-marker"],
+    "Latitude": ["latitude", "", "lat", SENSOR_TYPE_POS, "none", "mdi:map-marker"],
     "Distance": [
         "distance",
         "m",
@@ -233,7 +233,7 @@ SENSOR_TYPES = {
         "mdi:map-marker-distance",
     ],
     "DaysInUse": [
-        "bind_days_count",
+        "days_in_use",
         "days",
         "bindDaysCount",
         SENSOR_TYPE_OVERALL,

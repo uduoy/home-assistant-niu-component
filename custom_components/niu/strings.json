@@ -1,14 +1,6 @@
 {
+    "title": "Niu Integration",
     "config": {
-        "abort": {
-            "already_configured": "Device is already configured"
-        },
-        "error": {
-            "cannot_connect": "Failed to connect",
-            "invalid_auth": "Invalid authentication",
-            "invalid_path": "Invalid path",
-            "unknown": "Unexpected error"
-        },
         "step": {
             "user": {
                 "title": "Niu Electric Scooter",
@@ -17,9 +9,17 @@
                     "username": "Username",
                     "password": "Password",
                     "scooter_id": "Scooter ID",
-                    "sensors_selected": "Select which sensor to integrate"
+                    "sensors_selected": "Select sensors to integrate"
                 }
             }
+        },
+        "error": {
+            "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
+            "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
+            "unknown": "[%key:common::config_flow::error::unknown%]"
+        },
+        "abort": {
+            "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
         }
     },
     "entity": {
@@ -108,6 +108,5 @@
                 "name": "Last Track Camera"
             }
         }
-    },
-    "title": "Niu Integration"
+    }
 }

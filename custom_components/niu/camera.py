@@ -29,15 +29,17 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
     coordinator_data = hass.data[DOMAIN][entry.entry_id]
     coordinator = coordinator_data["coordinator"]
     api = coordinator_data["api"]
+    
+    _LOGGER.debug("Setting up camera: sn=%s, sensor_prefix=%s", api.sn, api.sensor_prefix)
 
     # Validate SN before creating entities
-    if not api.sn:
-        _LOGGER.error("Cannot create camera entity: SN not available")
+    if not api.sn or api.sn.lower() == "none":
+        _LOGGER.error("Cannot create camera entity: SN not available or invalid (sn=%s)", api.sn)
         return False
 
     camera_name = api.sensor_prefix + " Last Track Camera"
 
-    entry = {
+    device_config = {
         "name": camera_name,
         "still_image_url": "",
         "stream_source": None,
@@ -49,7 +51,7 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
         "framerate": 2,
         "verify_ssl": False,
     }
-    async_add_entities([LastTrackCamera(hass, api, coordinator, entry, camera_name, camera_name)])
+    async_add_entities([LastTrackCamera(hass, api, coordinator, device_config, camera_name, camera_name)])
 
 
 class LastTrackCamera(GenericCamera):
@@ -57,11 +59,12 @@ class LastTrackCamera(GenericCamera):
     _attr_translation_key = "last_track_camera"
     
     def __init__(self, hass, api, coordinator, device_info, identifier: str, title: str) -> None:
-        if not api.sn:
-            raise ValueError("Cannot create camera entity: SN not available")
+        if not api.sn or api.sn.lower() == "none":
+            raise ValueError(f"Cannot create camera entity: SN not available or invalid (sn={api.sn})")
         self._api = api
         self._coordinator = coordinator
         self._sn = api.sn
+        _LOGGER.debug("Creating camera: unique_id=camera.niu_%s_last_track", self._sn)
         super().__init__(hass, device_info, identifier, title)
 
     @property
@@ -81,9 +84,12 @@ class LastTrackCamera(GenericCamera):
 
     @property
     def device_info(self):
-        device_name = f"Niu Scooter {self._sn}"
+        # Use sensor_prefix (scooter name) if available, otherwise use SN
+        device_name = self._api.sensor_prefix if self._api.sensor_prefix else f"Niu Scooter {self._sn}"
+        # Use SN as primary identifier, fallback to device_name
+        identifier = self._sn if self._sn and self._sn.lower() != "none" else device_name
         dev = {
-            "identifiers": {("niu", self._sn)},
+            "identifiers": {("niu", identifier)},
             "name": device_name,
             "manufacturer": "Niu",
             "model": 1.0,
