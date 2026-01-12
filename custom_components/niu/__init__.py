@@ -147,15 +147,15 @@ class NiuDataUpdateCoordinator(DataUpdateCoordinator):
                 "temperature": self.api.getDataBat("temperature"),
                 "gradeBattery": self.api.getDataBat("gradeBattery"),
                 "bmsId": self.api.getDataBat("bmsId"),
+                "isCharging": self.api.getDataBat("isCharging"),
+                "estimatedMileage": self.api.getDataBat("estimatedMileage"),
+                "centreCtrlBattery": self.api.getDataBat("centreCtrlBattery"),
             },
             SENSOR_TYPE_MOTO: {
                 "nowSpeed": self.api.getDataMoto("nowSpeed"),
                 "isConnected": self.api.getDataMoto("isConnected"),
-                "isCharging": self.api.getDataMoto("isCharging"),
                 "lockStatus": self.api.getDataMoto("lockStatus"),
                 "leftTime": self.api.getDataMoto("leftTime"),
-                "estimatedMileage": self.api.getDataMoto("estimatedMileage"),
-                "centreCtrlBattery": self.api.getDataMoto("centreCtrlBattery"),
                 "hdop": self.api.getDataMoto("hdop"),
             },
             SENSOR_TYPE_POS: {

@@ -219,7 +219,17 @@ class NiuApi:
         if not isinstance(self.dataBat, dict):
             return None
         try:
-            return self.dataBat.get("data", {}).get("batteries", {}).get("compartmentA", {}).get(id_field)
+            data = self.dataBat.get("data", {})
+
+            # Primary battery compartment fields
+            compartment_a = data.get("batteries", {}).get("compartmentA", {})
+            if isinstance(compartment_a, dict) and id_field in compartment_a:
+                return compartment_a.get(id_field)
+
+            # Top-level battery fields (e.g., isCharging/centreCtrlBattery/estimatedMileage)
+            if isinstance(data, dict):
+                return data.get(id_field)
+            return None
         except (KeyError, TypeError):
             return None
 

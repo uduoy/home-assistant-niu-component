@@ -224,10 +224,12 @@ class NiuSensor(CoordinatorEntity):
                 "latitude": self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lat"),
                 "longitude": self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lng"),
                 "time": self.coordinator.data.get(SENSOR_TYPE_DIST, {}).get("time"),
-                "range": self.coordinator.data.get(SENSOR_TYPE_MOTO, {}).get("estimatedMileage"),
+                "range": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("estimatedMileage")
+                or self.coordinator.data.get(SENSOR_TYPE_MOTO, {}).get("estimatedMileage"),
                 "battery": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("batteryCharging"),
                 "battery_grade": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("gradeBattery"),
-                "centre_ctrl_batt": self.coordinator.data.get(SENSOR_TYPE_MOTO, {}).get("centreCtrlBattery"),
+                "centre_ctrl_batt": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("centreCtrlBattery")
+                or self.coordinator.data.get(SENSOR_TYPE_MOTO, {}).get("centreCtrlBattery"),
             })
         return attrs
 
