@@ -38,10 +38,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     scooter_id = niu_auth["scooter_id"]
 
     # Create API instance
-    api = NiuApi(username, password, scooter_id)
+    api = NiuApi(hass, username, password, scooter_id)
 
-    # Initialize API synchronously
-    await hass.async_add_executor_job(api.initApi)
+    # Initialize API asynchronously
+    await api.async_init()
 
     # Create data update coordinator
     coordinator = NiuDataUpdateCoordinator(hass, api=api)
@@ -90,10 +90,10 @@ class NiuDataUpdateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug("Updating Niu Scooter data")
 
         # Update all data from API
-        await self.hass.async_add_executor_job(self.api.updateBat)
-        await self.hass.async_add_executor_job(self.api.updateMoto)
-        await self.hass.async_add_executor_job(self.api.updateMotoInfo)
-        await self.hass.async_add_executor_job(self.api.updateTrackInfo)
+        await self.api.async_update_bat()
+        await self.api.async_update_moto()
+        await self.api.async_update_moto_info()
+        await self.api.async_update_track_info()
 
         # Return all sensor data in a structured format
         return {
