@@ -143,6 +143,11 @@
             "last_track_camera": {
                 "name": "Last Track Camera"
             }
+        },
+        "device_tracker": {
+            "scooter_location": {
+                "name": "Scooter Location"
+            }
         }
     }
 }

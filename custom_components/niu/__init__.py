@@ -55,6 +55,7 @@ def _redact_sensitive(value: Any) -> Any:
 # Platforms that this integration supports
 PLATFORMS_SENSOR = ["sensor"]
 PLATFORMS_CAMERA = ["camera"]
+PLATFORMS_DEVICE_TRACKER = ["device_tracker"]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -73,6 +74,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     platforms = list(PLATFORMS_SENSOR)
     if "LastTrackThumb" in sensors_selected:
         platforms.extend(PLATFORMS_CAMERA)
+
+    # Add map entity when we have either live coordinates or track-derived location.
+    if {
+        "Longitude",
+        "Latitude",
+        "HDOP",
+        "LastTrackStartTime",
+        "LastTrackEndTime",
+        "LastTrackDistance",
+        "LastTrackAverageSpeed",
+        "LastTrackRidingtime",
+        "LastTrackThumb",
+    }.intersection(set(sensors_selected)):
+        platforms.extend(PLATFORMS_DEVICE_TRACKER)
 
     username = niu_auth["username"]
     password = niu_auth["password"]
