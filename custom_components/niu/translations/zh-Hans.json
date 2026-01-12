@@ -7,36 +7,42 @@
                 "data": {
                     "username": "用户名 (手机号)",
                     "password": "密码",
-                    "scooter_id": "车辆 ID (可选)",
+                    "scooter_id": "车辆 ID (可选)"
+                }
+            },
+            "sensors": {
+                "title": "传感器",
+                "description": "选择要集成的传感器。",
+                "data": {
                     "sensors_selected": {
                         "name": "选择要集成的传感器",
                         "options": {
-                            "battery_charge": "电池电量",
-                            "is_connected": "是否连接 (电池)",
-                            "times_charged": "充电次数",
-                            "temp_descr": "温度描述",
-                            "temperature": "电池温度",
-                            "battery_grade": "电池健康度",
-                            "current_speed": "当前速度",
-                            "scooter_connected": "车辆是否连接",
-                            "is_charging": "是否充电中",
-                            "is_locked": "是否锁定",
-                            "time_left": "剩余时间",
-                            "estimated_mileage": "预计续航里程",
-                            "centre_ctrl_batt": "中控电池电量",
-                            "hdop": "水平精度因子",
-                            "longitude": "经度",
-                            "latitude": "纬度",
-                            "distance": "本次骑行距离",
-                            "riding_time": "本次骑行时间",
-                            "total_mileage": "总里程",
-                            "days_in_use": "已使用天数",
-                            "last_track_start_time": "上次骑行开始时间",
-                            "last_track_end_time": "上次骑行结束时间",
-                            "last_track_distance": "上次骑行距离",
-                            "last_track_average_speed": "上次骑行平均速度",
-                            "last_track_riding_time": "上次骑行时间",
-                            "last_track_thumb": "上次骑行轨迹缩略图 (摄像头)"
+                            "BatteryCharge": "电池电量",
+                            "Isconnected": "是否连接 (电池)",
+                            "TimesCharged": "充电次数",
+                            "temperatureDesc": "温度描述",
+                            "Temperature": "电池温度",
+                            "BatteryGrade": "电池健康度",
+                            "CurrentSpeed": "当前速度",
+                            "ScooterConnected": "车辆是否连接",
+                            "IsCharging": "是否充电中",
+                            "IsLocked": "是否锁定",
+                            "TimeLeft": "剩余时间",
+                            "EstimatedMileage": "预计续航里程",
+                            "centreCtrlBatt": "中控电池电量",
+                            "HDOP": "水平精度因子",
+                            "Longitude": "经度",
+                            "Latitude": "纬度",
+                            "Distance": "本次骑行距离",
+                            "RidingTime": "本次骑行时间",
+                            "totalMileage": "总里程",
+                            "DaysInUse": "已使用天数",
+                            "LastTrackStartTime": "上次骑行开始时间",
+                            "LastTrackEndTime": "上次骑行结束时间",
+                            "LastTrackDistance": "上次骑行距离",
+                            "LastTrackAverageSpeed": "上次骑行平均速度",
+                            "LastTrackRidingtime": "上次骑行时间",
+                            "LastTrackThumb": "上次骑行轨迹缩略图 (摄像头)"
                         }
                     }
                 }
@@ -45,6 +51,8 @@
         "error": {
             "cannot_connect": "无法连接到 NIU API。请检查您的凭据和网络连接。",
             "invalid_auth": "无效的身份验证。请检查您的用户名和密码。",
+            "invalid_path": "路径无效。",
+            "no_sensors": "请至少选择一个传感器。",
             "unknown": "发生未知错误。"
         },
         "abort": {

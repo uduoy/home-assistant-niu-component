@@ -142,10 +142,30 @@ class NiuSensor(CoordinatorEntity):
         self._id_name = id_name  # info field for parsing the URL
         self._sensor_grp = sensor_grp  # info field for choosing the right URL
         self._icon = icon
-        self._state = 0
+        self._state = None
+        self._raw_state = None
+        self._last_valid_state = None
         self._attr_translation_key = sensor_id # Use sensor_id for translation (lowercase with underscores)
         self.entity_id = _generate_entity_id(sensor_prefix, sn, name, sensor_id)
         super().__init__(coordinator)
+
+    def _handle_coordinator_update(self) -> None:
+        raw_value = None
+        if self.coordinator.data is not None:
+            raw_value = self.coordinator.data.get(self._sensor_grp, {}).get(self._id_name)
+
+        self._raw_state = raw_value
+
+        if raw_value is not None:
+            self._last_valid_state = raw_value
+            self._state = raw_value
+        elif self._last_valid_state is not None:
+            # Keep last known good value when server returns null
+            self._state = self._last_valid_state
+        else:
+            self._state = None
+
+        self.async_write_ha_state()
 
     @property
     def unique_id(self):
@@ -165,10 +185,7 @@ class NiuSensor(CoordinatorEntity):
 
     @property
     def state(self):
-        if self.coordinator.data is None:
-            return self._state
-
-        return self.coordinator.data.get(self._sensor_grp, {}).get(self._id_name, self._state)
+        return self._state
 
     @property
     def device_class(self):
@@ -189,11 +206,20 @@ class NiuSensor(CoordinatorEntity):
 
     @property
     def extra_state_attributes(self):
+        raw_value = self._raw_state
+        value_source = "live" if raw_value is not None else ("cached" if self._state is not None else "none")
+
+        attrs = {
+            "raw_value": raw_value,
+            "value_source": value_source,
+        }
+
+        # Keep existing extra attributes for connectivity sensor
         if self._sensor_grp == SENSOR_TYPE_MOTO and self._id_name == "isConnected":
             if self.coordinator.data is None:
-                return {}
+                return attrs
             
-            return {
+            attrs.update({
                 "bmsId": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("bmsId"),
                 "latitude": self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lat"),
                 "longitude": self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lng"),
@@ -202,8 +228,8 @@ class NiuSensor(CoordinatorEntity):
                 "battery": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("batteryCharging"),
                 "battery_grade": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("gradeBattery"),
                 "centre_ctrl_batt": self.coordinator.data.get(SENSOR_TYPE_MOTO, {}).get("centreCtrlBattery"),
-            }
-        return {}
+            })
+        return attrs
 
     @property
     def available(self):

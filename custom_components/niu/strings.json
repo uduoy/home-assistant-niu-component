@@ -8,8 +8,44 @@
                 "data": {
                     "username": "Username",
                     "password": "Password",
-                    "scooter_id": "Scooter ID",
-                    "sensors_selected": "Select sensors to integrate"
+                    "scooter_id": "Scooter ID"
+                }
+            },
+            "sensors": {
+                "title": "Sensors",
+                "description": "Select which sensors you want to integrate.",
+                "data": {
+                    "sensors_selected": {
+                        "name": "Select which sensor to integrate",
+                        "options": {
+                            "BatteryCharge": "Battery Charge",
+                            "Isconnected": "Is Connected (Battery)",
+                            "TimesCharged": "Times Charged",
+                            "temperatureDesc": "Temperature Description",
+                            "Temperature": "Battery Temperature",
+                            "BatteryGrade": "Battery Grade",
+                            "CurrentSpeed": "Current Speed",
+                            "ScooterConnected": "Scooter Connected",
+                            "IsCharging": "Is Charging",
+                            "IsLocked": "Is Locked",
+                            "TimeLeft": "Time Left",
+                            "EstimatedMileage": "Estimated Mileage",
+                            "centreCtrlBatt": "Centre Control Battery",
+                            "HDOP": "HDOP",
+                            "Longitude": "Longitude",
+                            "Latitude": "Latitude",
+                            "Distance": "Trip Distance",
+                            "RidingTime": "Trip Riding Time",
+                            "totalMileage": "Total Mileage",
+                            "DaysInUse": "Days In Use",
+                            "LastTrackStartTime": "Last Track Start Time",
+                            "LastTrackEndTime": "Last Track End Time",
+                            "LastTrackDistance": "Last Track Distance",
+                            "LastTrackAverageSpeed": "Last Track Average Speed",
+                            "LastTrackRidingtime": "Last Track Riding Time",
+                            "LastTrackThumb": "Last Track Thumbnail (Camera)"
+                        }
+                    }
                 }
             }
         },
