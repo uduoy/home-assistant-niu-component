@@ -49,7 +49,8 @@ class NiuAuthenticator:
                 return token
             else:
                 return token != ""
-        except:
+        except Exception as err:
+            _LOGGER.error("Authentication failed: %s", err, exc_info=True)
             return False
 
 
