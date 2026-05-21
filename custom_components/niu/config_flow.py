@@ -25,7 +25,6 @@ from .const import (
     DEFAULT_SCOOTER_ID,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
-    SCAN_INTERVAL_OPTIONS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -117,11 +116,12 @@ class NiuOptionsFlowHandler(config_entries.OptionsFlow):
 
         schema = vol.Schema(
             {
-                vol.Required(CONF_SCAN_INTERVAL, default=current): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=SCAN_INTERVAL_OPTIONS,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                        translation_key=CONF_SCAN_INTERVAL,
+                vol.Required(CONF_SCAN_INTERVAL, default=current): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=1,
+                        max=60,
+                        unit_of_measurement="minutes",
+                        mode=selector.NumberSelectorMode.BOX,
                     ),
                 ),
             }
