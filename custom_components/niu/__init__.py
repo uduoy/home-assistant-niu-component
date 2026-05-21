@@ -64,7 +64,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Niu Smart Plug from a config entry."""
-    hass.data[DOMAIN][entry.entry_id] = {}
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {}
 
     niu_auth = entry.data.get(CONF_AUTH, None)
     if niu_auth == None:
