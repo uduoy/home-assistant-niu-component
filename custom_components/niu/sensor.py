@@ -10,7 +10,7 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
 
-from .const import CONF_AUTH, CONF_SENSORS, DOMAIN, SENSOR_TYPE_BAT, SENSOR_TYPE_MOTO, SENSOR_TYPE_DIST, SENSOR_TYPE_OVERALL, SENSOR_TYPE_POS, SENSOR_TYPE_TRACK, SENSOR_TYPES
+from .const import *
 from .api import NiuApi
 from .gcj02 import gcj02_to_wgs84
 
@@ -57,7 +57,10 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
     # add sensors
     devices = []
     for sensor in sensors_selected:
-        if sensor != "LastTrackThumb":
+        if sensor == "LastTrackThumb":
+            # Last Track Thumb sensor will be used as camera... now just skip it
+            pass
+        elif sensor in SENSOR_TYPES:
             sensor_config = SENSOR_TYPES[sensor]
             desired_entity_id = _generate_entity_id(
                 api.sensor_prefix,
@@ -104,7 +107,8 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
                 )
             )
         else:
-            # Last Track Thumb sensor will be used as camera... now just skip it
+            # Sensor name not in SENSOR_TYPES (may have been migrated to binary_sensor);
+            # skip silently so old configs don't crash with KeyError.
             pass
 
     # Always add vehicle metadata sensors (diagnostic). These are stable and useful

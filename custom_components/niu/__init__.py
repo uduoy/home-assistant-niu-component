@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .const import CONF_AUTH, CONF_SENSORS, DOMAIN, SENSOR_TYPE_BAT, SENSOR_TYPE_MOTO, SENSOR_TYPE_POS, SENSOR_TYPE_DIST, SENSOR_TYPE_OVERALL, SENSOR_TYPE_TRACK
+from .const import CONF_AUTH, CONF_SCAN_INTERVAL, CONF_SENSORS, DEFAULT_SCAN_INTERVAL, DOMAIN, SENSOR_TYPE_BAT, SENSOR_TYPE_MOTO, SENSOR_TYPE_POS, SENSOR_TYPE_DIST, SENSOR_TYPE_OVERALL, SENSOR_TYPE_TRACK
 from .api import NiuApi
 
 _LOGGER = logging.getLogger(__name__)
@@ -116,7 +116,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         raise ConfigEntryNotReady
 
     # Create data update coordinator
-    coordinator = NiuDataUpdateCoordinator(hass, api=api)
+    coordinator = NiuDataUpdateCoordinator(hass, entry, api=api)
     await coordinator.async_config_entry_first_refresh()
 
     # Store coordinator in hass.data
@@ -149,14 +149,15 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 class NiuDataUpdateCoordinator(DataUpdateCoordinator):
     """Data update coordinator for Niu Scooters."""
 
-    def __init__(self, hass: HomeAssistant, api: NiuApi) -> None:
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, api: NiuApi) -> None:
         """Initialize the coordinator."""
         self.api = api
+        interval_minutes = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(seconds=60),
+            update_interval=timedelta(minutes=interval_minutes),
         )
 
     async def _async_update_data(self):

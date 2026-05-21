@@ -14,7 +14,19 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import selector
 
 from .api import NiuApi
-from .const import *
+from .const import (
+    AVAILABLE_SENSORS,
+    CONF_AUTH,
+    CONF_SCAN_INTERVAL,
+    CONF_SCOOTER_ID,
+    CONF_SENSORS,
+    CONF_USERNAME,
+    CONF_PASSWORD,
+    DEFAULT_SCOOTER_ID,
+    DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
+    SCAN_INTERVAL_OPTIONS,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -86,3 +98,32 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
         )
+
+    @staticmethod
+    def async_get_options_flow(config_entry):
+        """Get the options flow for this handler."""
+        return NiuOptionsFlowHandler(config_entry)
+
+
+class NiuOptionsFlowHandler(config_entries.OptionsFlow):
+    """Handle NIU integration options."""
+
+    async def async_step_init(self, user_input=None):
+        """Manage the NIU options."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        current = self.config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_SCAN_INTERVAL, default=current): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=SCAN_INTERVAL_OPTIONS,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        translation_key=CONF_SCAN_INTERVAL,
+                    ),
+                ),
+            }
+        )
+        return self.async_show_form(step_id="init", data_schema=schema)
