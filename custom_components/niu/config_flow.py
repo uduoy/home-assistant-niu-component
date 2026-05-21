@@ -101,7 +101,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     def async_get_options_flow(config_entry):
         """Get the options flow for this handler."""
-        return NiuOptionsFlowHandler(config_entry)
+        return NiuOptionsFlowHandler()
 
 
 class NiuOptionsFlowHandler(config_entries.OptionsFlow):
