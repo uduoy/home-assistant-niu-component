@@ -14,18 +14,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import selector
 
 from .api import NiuApi
-from .const import (
-    AVAILABLE_SENSORS,
-    CONF_AUTH,
-    CONF_SCAN_INTERVAL,
-    CONF_SCOOTER_ID,
-    CONF_SENSORS,
-    CONF_USERNAME,
-    CONF_PASSWORD,
-    DEFAULT_SCOOTER_ID,
-    DEFAULT_SCAN_INTERVAL,
-    DOMAIN,
-)
+from .const import *
 
 _LOGGER = logging.getLogger(__name__)
 
