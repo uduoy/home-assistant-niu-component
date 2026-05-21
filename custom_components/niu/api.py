@@ -172,7 +172,7 @@ class NiuApi:
         
         try:
             session = async_get_clientsession(self.hass, verify_ssl=False)
-            async with session.post(url, headers=headers, data={"sn": self.sn}, timeout=ClientTimeout(total=10)) as response:
+            async with session.post(url, headers=headers, json={"sn": self.sn}, timeout=ClientTimeout(total=10)) as response:
                 if response.status != 200:
                     _LOGGER.debug("Post info request failed with status %d", response.status)
                     return None
@@ -266,7 +266,7 @@ class NiuApi:
         if not isinstance(self.dataMoto, dict):
             return None
         try:
-            return self.dataMoto.get("data", {}).get("postion", {}).get(id_field)
+            return self.dataMoto.get("data", {}).get("position", {}).get(id_field)
         except (KeyError, TypeError):
             return None
 
