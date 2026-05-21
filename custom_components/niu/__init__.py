@@ -9,6 +9,7 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import CONF_AUTH, CONF_SENSORS, DOMAIN, SENSOR_TYPE_BAT, SENSOR_TYPE_MOTO, SENSOR_TYPE_POS, SENSOR_TYPE_DIST, SENSOR_TYPE_OVERALL, SENSOR_TYPE_TRACK
@@ -102,7 +103,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     api = NiuApi(hass, username, password, scooter_id)
 
     # Initialize API asynchronously
-    await api.async_init()
+    try:
+        await api.async_init()
+    except Exception as err:
+        _LOGGER.error("Failed to initialize NIU API: %s", err)
+        raise ConfigEntryNotReady from err
+
+    if not api.sn:
+        _LOGGER.error("Failed to get valid scooter SN")
+        raise ConfigEntryNotReady
 
     # Create data update coordinator
     coordinator = NiuDataUpdateCoordinator(hass, api=api)

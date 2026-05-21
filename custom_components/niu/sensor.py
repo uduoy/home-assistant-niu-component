@@ -12,6 +12,7 @@ from homeassistant.util import slugify
 
 from .const import *
 from .api import NiuApi
+from .gcj02 import gcj02_to_wgs84
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -248,7 +249,19 @@ class NiuSensor(CoordinatorEntity):
 
     @property
     def state(self):
-        return self._state
+        raw = self._state
+        if raw is not None and self._sensor_grp == SENSOR_TYPE_POS:
+            try:
+                lng = float(self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lng", 0))
+                lat = float(self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lat", 0))
+                if lng and lat:
+                    wgs_lng, wgs_lat = gcj02_to_wgs84(lng, lat)
+                    if self._id_name == "lat":
+                        return wgs_lat
+                    return wgs_lng
+            except (TypeError, ValueError):
+                pass
+        return raw
 
     @property
     def device_class(self):
@@ -286,8 +299,16 @@ class NiuSensor(CoordinatorEntity):
             
             attrs.update({
                 "bmsId": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("bmsId"),
-                "latitude": self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lat"),
-                "longitude": self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lng"),
+            try:
+                raw_lat = self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lat")
+                raw_lng = self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lng")
+                if raw_lat is not None and raw_lng is not None:
+                    wgs_lng, wgs_lat = gcj02_to_wgs84(float(raw_lng), float(raw_lat))
+                    attrs["latitude"] = wgs_lat
+                    attrs["longitude"] = wgs_lng
+                else:
+                    attrs["latitude"] = raw_lat
+                    attrs["longitude"] = raw_lng
                 "time": self.coordinator.data.get(SENSOR_TYPE_DIST, {}).get("time"),
                 "range": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("estimatedMileage")
                 or self.coordinator.data.get(SENSOR_TYPE_MOTO, {}).get("estimatedMileage"),

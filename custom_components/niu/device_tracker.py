@@ -11,6 +11,15 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import NiuApi
 from .const import DOMAIN, SENSOR_TYPE_POS, SENSOR_TYPE_TRACK, SENSOR_TYPE_BAT
+from .gcj02 import gcj02_to_wgs84
+
+def _get_wgs84(lat, lng):
+    """Convert coordinates if both valid."""
+    lat_f = _coerce_float(lat)
+    lng_f = _coerce_float(lng)
+    if lat_f is not None and lng_f is not None:
+        return gcj02_to_wgs84(lng_f, lat_f)
+    return None, None
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,7 +62,8 @@ class NiuScooterTracker(CoordinatorEntity, TrackerEntity):
         # Prefer live position from motor_index_info
         if self.coordinator.data is not None:
             lat = self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lat")
-            lat_f = _coerce_float(lat)
+            lng = self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lng")
+            lat_f, lng_f = _get_wgs84(lat, lng)
             if lat_f is not None:
                 return lat_f
 
@@ -62,7 +72,9 @@ class NiuScooterTracker(CoordinatorEntity, TrackerEntity):
         if isinstance(track_info, dict):
             try:
                 lat = track_info.get("data", [{}])[0].get("lastPoint", {}).get("lat")
-                return _coerce_float(lat)
+                lng = track_info.get("data", [{}])[0].get("lastPoint", {}).get("lng")
+                lat_f, _ = _get_wgs84(lat, lng)
+                return lat_f
             except (IndexError, AttributeError, TypeError):
                 return None
         return None
@@ -71,8 +83,9 @@ class NiuScooterTracker(CoordinatorEntity, TrackerEntity):
     def longitude(self) -> float | None:
         # Prefer live position from motor_index_info
         if self.coordinator.data is not None:
+            lat = self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lat")
             lng = self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lng")
-            lng_f = _coerce_float(lng)
+            _, lng_f = _get_wgs84(lat, lng)
             if lng_f is not None:
                 return lng_f
 
@@ -80,8 +93,10 @@ class NiuScooterTracker(CoordinatorEntity, TrackerEntity):
         track_info = getattr(self._api, "dataTrackInfo", None)
         if isinstance(track_info, dict):
             try:
+                lat = track_info.get("data", [{}])[0].get("lastPoint", {}).get("lat")
                 lng = track_info.get("data", [{}])[0].get("lastPoint", {}).get("lng")
-                return _coerce_float(lng)
+                _, lng_f = _get_wgs84(lat, lng)
+                return lng_f
             except (IndexError, AttributeError, TypeError):
                 return None
         return None
@@ -113,7 +128,7 @@ class NiuScooterTracker(CoordinatorEntity, TrackerEntity):
             attrs["last_track_start_time"] = self.coordinator.data.get(SENSOR_TYPE_TRACK, {}).get("startTime")
             attrs["last_track_end_time"] = self.coordinator.data.get(SENSOR_TYPE_TRACK, {}).get("endTime")
 
-        # Keep standard attributes for maps
+        # Keep standard attributes for maps (already converted via latitude/longitude properties)
         if lat is not None:
             attrs[ATTR_LATITUDE] = lat
         if lng is not None:
