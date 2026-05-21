@@ -162,6 +162,28 @@
                 "name": "上次骑行轨迹摄像头"
             }
         },
+        "binary_sensor": {
+            "is_battery_connected": {
+                "name": "电池已连接"
+            },
+            "scooter_connected": {
+                "name": "车辆已连接"
+            },
+            "is_charging": {
+                "name": "充电状态",
+                "state": {
+                    "true": "充电中",
+                    "false": "未充电"
+                }
+            },
+            "is_locked": {
+                "name": "锁定状态",
+                "state": {
+                    "true": "已锁定",
+                    "false": "未锁定"
+                }
+            }
+        },
         "device_tracker": {
             "scooter_location": {
                 "name": "车辆位置"

@@ -154,6 +154,28 @@
                 "name": "Last Track Camera"
             }
         },
+        "binary_sensor": {
+            "is_battery_connected": {
+                "name": "Battery Connected"
+            },
+            "scooter_connected": {
+                "name": "Scooter Connected"
+            },
+            "is_charging": {
+                "name": "Is Charging",
+                "state": {
+                    "true": "Charging",
+                    "false": "Not Charging"
+                }
+            },
+            "is_locked": {
+                "name": "Is Locked",
+                "state": {
+                    "true": "Locked",
+                    "false": "Unlocked"
+                }
+            }
+        },
         "device_tracker": {
             "scooter_location": {
                 "name": "Scooter Location"
