@@ -19,11 +19,14 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class NiuApi:
-    def __init__(self, hass, username: str, password: str, scooter_id: int) -> None:
+    def __init__(self, hass, username: str, password: str, scooter_id: int,
+                 language: str = "en-US", timezone: str = "UTC") -> None:
         self.hass = hass
         self.username = username
         self.password = password
         self.scooter_id = int(scooter_id)
+        self.language = language
+        self.timezone = timezone
 
         self.dataBat: Optional[Dict[str, Any]] = None
         self.dataMoto: Optional[Dict[str, Any]] = None
@@ -40,14 +43,18 @@ class NiuApi:
         self.product_type: str | None = None
         self.carframe_id: str | None = None
 
+    @classmethod
+    def from_hass(cls, hass, username, password, scooter_id):
+        """Create NiuApi with locale settings from Home Assistant config."""
+        language = hass.config.language
+        if hass.config.country and "-" not in language:
+            language = f"{language}-{hass.config.country}"
+        return cls(hass, username, password, scooter_id,
+                   language=language, timezone=str(hass.config.time_zone))
+
     async def async_init(self) -> None:
         """Initialize API asynchronously."""
         self.token = await self.async_get_token()
-        
-        if not self.token:
-            _LOGGER.error("Failed to get authentication token")
-            return
-            
         api_uri = MOTOINFO_LIST_API_URI
         vehicles_info = await self.async_get_vehicles_info(api_uri)
         self.dataVehiclesInfo = vehicles_info
@@ -137,10 +144,14 @@ class NiuApi:
             return None
             
         url = API_BASE_URL + path
+
         params = {"sn": self.sn}
+        is_chinese = self.language.startswith("zh")
+        client_id = "Domestic" if is_chinese else "Overseas"
         headers = {
             "token": str(self.token),
-            "user-agent": "manager/4.10.4 (android; IN2020 11);lang=zh-CN;client-agentIdentifier=Domestic;timezone=Asia/Shanghai;model=IN2020;deviceName=IN2020;ostype=android",
+            "Accept-Language": self.language,
+            "user-agent": f"manager/4.10.4 (android; IN2020 11);lang={self.language};clientIdentifier={client_id};timezone={self.timezone};model=IN2020;deviceName=IN2020;ostype=android",
         }
         
         try:
@@ -168,8 +179,7 @@ class NiuApi:
             return None
             
         url = API_BASE_URL + path
-        headers = {"token": str(self.token), "Accept-Language": "en-US"}
-        
+        headers = {"token": str(self.token), "Accept-Language": self.language}
         try:
             session = async_get_clientsession(self.hass, verify_ssl=False)
             async with session.post(url, headers=headers, json={"sn": self.sn}, timeout=ClientTimeout(total=10)) as response:
@@ -195,10 +205,12 @@ class NiuApi:
             return None
             
         url = API_BASE_URL + path
+        is_chinese = self.language.startswith("zh")
+        client_id = "Domestic" if is_chinese else "Overseas"
         headers = {
             "token": str(self.token),
-            "Accept-Language": "en-US",
-            "User-Agent": "manager/1.0.0 (identifier);clientIdentifier=identifier",
+            "Accept-Language": self.language,
+            "User-Agent": f"manager/1.0.0 (identifier);clientIdentifier={client_id}",
         }
         
         try:
@@ -225,7 +237,7 @@ class NiuApi:
             return None
 
     def getDataBat(self, id_field: str) -> Any:
-        """Get battery data."""
+        """Get battery data (primary battery compartmentA)."""
         if not isinstance(self.dataBat, dict):
             return None
         try:
@@ -240,6 +252,24 @@ class NiuApi:
             if isinstance(data, dict):
                 return data.get(id_field)
             return None
+        except (KeyError, TypeError):
+            return None
+
+    def getDataBatA(self, id_field: str) -> Any:
+        """Get primary battery data (direct access)."""
+        return self.getDataBat(id_field)
+
+    def hasSecondBattery(self) -> bool:
+        """Check if scooter has a second battery."""
+        try:
+            return "compartmentB" in self.dataBat.get("data", {}).get("batteries", {})
+        except (KeyError, TypeError):
+            return False
+
+    def getDataBatB(self, id_field: str) -> Any:
+        """Get second battery data."""
+        try:
+            return self.dataBat["data"]["batteries"]["compartmentB"][id_field]
         except (KeyError, TypeError):
             return None
 
