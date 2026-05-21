@@ -44,7 +44,7 @@ class NiuAuthenticator:
     async def authenticate(self, hass):
         api = NiuApi.from_hass(hass, self.username, self.password, self.scooter_id)
         try:
-            token = await hass.async_add_executor_job(api.get_token)
+            token = await api.async_get_token()
             if isinstance(token, bool):
                 return token
             else:
