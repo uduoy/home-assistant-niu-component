@@ -101,8 +101,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     password = niu_auth["password"]
     scooter_id = niu_auth["scooter_id"]
 
-    # Create API instance
-    api = NiuApi(hass, username, password, scooter_id)
+    # Create API instance with HA locale settings
+    api = NiuApi.from_hass(hass, username, password, scooter_id)
 
     # Initialize API asynchronously
     try:
