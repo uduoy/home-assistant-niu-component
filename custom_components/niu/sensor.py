@@ -2,16 +2,31 @@
     Support for Niu Scooters by Marcel Westra.
     Asynchronous version implementation by Giovanni P. (@pikka97)
 """
-from datetime import timedelta
 import logging
+import re
 
-from homeassistant.helpers.entity import Entity
-from homeassistant.util import Throttle
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.entity import EntityCategory
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import slugify
 
-from .api import NiuApi
 from .const import *
+from .api import NiuApi
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _generate_entity_id(sensor_prefix: str | None, sn: str | None, sensor_name: str, sensor_id: str | None) -> str:
+    """Build a deterministic entity_id using scooter name and sensor key."""
+    device_source = sensor_prefix or sn or "niu_scooter"
+    slug_device = slugify(device_source) or "niu_scooter"
+
+    # Prefer CamelCase sensor name, fallback to snake_case id and generic label
+    name_source = sensor_name or sensor_id or "sensor"
+    camel_to_snake = re.sub(r"(?<!^)(?=[A-Z])", "_", name_source)
+    slug_sensor = slugify(camel_to_snake or name_source) or "sensor"
+
+    return f"sensor.{slug_device}_{slug_sensor}"
 
 
 async def async_setup_entry(hass, entry, async_add_entities) -> None:
@@ -22,23 +37,60 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
         )
         return False
 
-    username = niu_auth[CONF_USERNAME]
-    password = niu_auth[CONF_PASSWORD]
-    scooter_id = niu_auth[CONF_SCOOTER_ID]
     sensors_selected = niu_auth[CONF_SENSORS]
 
-    api = NiuApi.from_hass(hass, username, password, scooter_id)
-    await hass.async_add_executor_job(api.initApi)
+    # Get coordinator and api from hass.data
+    coordinator_data = hass.data[DOMAIN][entry.entry_id]
+    coordinator = coordinator_data["coordinator"]
+    api = coordinator_data["api"]
+    
+    _LOGGER.debug("Setting up sensors: sn=%s, sensor_prefix=%s", api.sn, api.sensor_prefix)
+
+    # Validate SN before creating entities
+    if not api.sn or api.sn.lower() == "none":
+        _LOGGER.error("Cannot create sensor entities: SN not available or invalid (sn=%s)", api.sn)
+        return False
+
+    entity_registry = er.async_get(hass)
 
     # add sensors
     devices = []
     for sensor in sensors_selected:
         if sensor != "LastTrackThumb":
             sensor_config = SENSOR_TYPES[sensor]
+            desired_entity_id = _generate_entity_id(
+                api.sensor_prefix,
+                api.sn,
+                sensor,
+                sensor_config[0],
+            )
+            unique_id = f"sensor.niu_{api.sn}_{sensor}"
+
+            current_entity_id = entity_registry.async_get_entity_id("sensor", DOMAIN, unique_id)
+            if current_entity_id and current_entity_id != desired_entity_id:
+                try:
+                    entity_registry.async_update_entity(
+                        current_entity_id,
+                        new_entity_id=desired_entity_id,
+                    )
+                    _LOGGER.debug(
+                        "Renamed entity %s -> %s for sensor %s",
+                        current_entity_id,
+                        desired_entity_id,
+                        sensor,
+                    )
+                except ValueError:
+                    _LOGGER.warning(
+                        "Unable to rename entity %s to %s (already in use)",
+                        current_entity_id,
+                        desired_entity_id,
+                    )
+
             devices.append(
                 NiuSensor(
-                    hass,
+                    coordinator,
                     api,
+                    entry.entry_id,
                     sensor,
                     sensor_config[0],
                     sensor_config[1],
@@ -54,45 +106,137 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
             # Last Track Thumb sensor will be used as camera... now just skip it
             pass
 
+    # Always add vehicle metadata sensors (diagnostic). These are stable and useful
+    # for UI clarity without cluttering the primary sensor list.
+    devices.extend(
+        [
+            NiuVehicleInfoSensor(coordinator, api, "sku_name", "SkuName"),
+            NiuVehicleInfoSensor(coordinator, api, "product_type", "ProductType"),
+            NiuVehicleInfoSensor(coordinator, api, "carframe_id", "CarframeId"),
+        ]
+    )
+
     async_add_entities(devices)
     return True
 
 
-class NiuSensor(Entity):
+class NiuVehicleInfoSensor(CoordinatorEntity):
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, api: NiuApi, key: str, label: str) -> None:
+        super().__init__(coordinator)
+        self._api = api
+        self._sn = api.sn
+        self._key = key
+        self._label = label
+
+        self._attr_translation_key = key
+        self._attr_unique_id = f"sensor.niu_{self._sn}_{key}"
+        self.entity_id = _generate_entity_id(api.sensor_prefix, api.sn, label, key)
+
+    @property
+    def state(self):
+        return getattr(self._api, self._key, None)
+
+    @property
+    def device_info(self):
+        device_name = self._api.sensor_prefix if self._api.sensor_prefix else f"Niu Scooter {self._sn}"
+        identifier = self._sn if self._sn and self._sn.lower() != "none" else device_name
+        return {
+            "identifiers": {(DOMAIN, identifier)},
+            "name": device_name,
+            "manufacturer": "Niu",
+            "model": self._api.sku_name or self._api.product_type or "Niu Scooter",
+            "hw_version": self._api.product_type,
+            "serial_number": self._api.carframe_id,
+        }
+
+
+class NiuSensor(CoordinatorEntity):
+    _attr_has_entity_name = True
+
     def __init__(
         self,
-        hass,
+        coordinator,
         api: NiuApi,
-        name,
+        entry_id,
+        name, # This 'name' parameter (from AVAILABLE_SENSORS) is used as sensor_name for unique_id
         sensor_id,
         uom,
         id_name,
         sensor_grp,
-        sensor_prefix,
+        sensor_prefix, # This is also no longer directly used for the entity name
         device_class,
         sn,
         icon,
     ):
-        self._unique_id = "sensor.niu_scooter_" + sn + "_" + sensor_id
-        self._name = (
-            "NIU Scooter " + sensor_prefix + " " + name
-        )  # Scooter name as sensor prefix
-        self._hass = hass
+        if not sn or sn.lower() == "none":
+            raise ValueError(f"Invalid SN provided for sensor {name}")
+        self._sn = sn
+        self._sensor_name = name  # e.g., "TimesCharged"
+        self._unique_id = f"sensor.niu_{sn}_{name}"
+        _LOGGER.debug("Creating sensor: unique_id=%s, sn=%s, name=%s", self._unique_id, sn, name)
+        # self._name = (
+        #     "NIU Scooter " + sensor_prefix + " " + name
+        # )  # Scooter name as sensor prefix - REMOVED
         self._uom = uom
         self._api = api
         self._device_class = device_class
         self._id_name = id_name  # info field for parsing the URL
         self._sensor_grp = sensor_grp  # info field for choosing the right URL
         self._icon = icon
-        self._state = 0
+        self._state = None
+        self._raw_state = None
+        self._last_valid_state = None
+        self._attr_translation_key = sensor_id # Use sensor_id for translation (lowercase with underscores)
+
+        # UI grouping: keep key day-to-day metrics in the main list, push noisy/secondary
+        # details (GPS precision/lat/lng/connectivity/track internals) into Diagnostics.
+        diagnostic_sensors = {
+            "Isconnected",
+            "ScooterConnected",
+            "HDOP",
+            "Longitude",
+            "Latitude",
+            "temperatureDesc",
+            "Distance",
+            "RidingTime",
+            "LastTrackStartTime",
+            "LastTrackEndTime",
+            "LastTrackRidingtime",
+        }
+        if name in diagnostic_sensors:
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+
+        self.entity_id = _generate_entity_id(sensor_prefix, sn, name, sensor_id)
+        super().__init__(coordinator)
+
+    def _handle_coordinator_update(self) -> None:
+        raw_value = None
+        if self.coordinator.data is not None:
+            raw_value = self.coordinator.data.get(self._sensor_grp, {}).get(self._id_name)
+
+        self._raw_state = raw_value
+
+        if raw_value is not None:
+            self._last_valid_state = raw_value
+            self._state = raw_value
+        elif self._last_valid_state is not None:
+            # Keep last known good value when server returns null
+            self._state = self._last_valid_state
+        else:
+            self._state = None
+
+        self.async_write_ha_state()
 
     @property
     def unique_id(self):
         return self._unique_id
 
-    @property
-    def name(self):
-        return self._name
+    # @property
+    # def name(self):
+    #     return self._name # REMOVED - Handled by translation_key and _attr_has_entity_name
 
     @property
     def unit_of_measurement(self):
@@ -112,62 +256,49 @@ class NiuSensor(Entity):
 
     @property
     def device_info(self):
-        device_name = "Niu E-scooter"
+        # Use sensor_prefix (scooter name) if available, otherwise use SN
+        device_name = self._api.sensor_prefix if self._api.sensor_prefix else f"Niu Scooter {self._sn}"
+        # Use SN as primary identifier, fallback to device_name
+        identifier = self._sn if self._sn and self._sn.lower() != "none" else device_name
         return {
-            "identifiers": {("niu", device_name)},
+            "identifiers": {("niu", identifier)},
             "name": device_name,
             "manufacturer": "Niu",
-            "model": 1.0,
+            "model": self._api.sku_name or self._api.product_type or "Niu Scooter",
+            "hw_version": self._api.product_type,
+            "serial_number": self._api.carframe_id,
         }
 
     @property
     def extra_state_attributes(self):
+        raw_value = self._raw_state
+        value_source = "live" if raw_value is not None else ("cached" if self._state is not None else "none")
+
+        attrs = {
+            "raw_value": raw_value,
+            "value_source": value_source,
+        }
+
+        # Keep existing extra attributes for connectivity sensor
         if self._sensor_grp == SENSOR_TYPE_MOTO and self._id_name == "isConnected":
-            attrs = {
-                "bmsId_a": self._api.getDataBatA("bmsId"),
-                "latitude": self._api.getDataPos("lat"),
-                "longitude": self._api.getDataPos("lng"),
-                "gsm": self._api.getDataMoto("gsm"),
-                "gps": self._api.getDataMoto("gps"),
-                "time": self._api.getDataDist("time"),
-                "range": self._api.getDataMoto("estimatedMileage"),
-                "battery_a": self._api.getDataBatA("batteryCharging"),
-                "battery_grade_a": self._api.getDataBatA("gradeBattery"),
-                "centre_ctrl_batt": self._api.getDataMoto("centreCtrlBattery"),
-            }
-            if self._api.hasSecondBattery():
-                attrs["bmsId_b"] = self._api.getDataBatB("bmsId")
-                attrs["battery_b"] = self._api.getDataBatB("batteryCharging")
-                attrs["battery_grade_b"] = self._api.getDataBatB("gradeBattery")
-            return attrs
-
-    @Throttle(timedelta(minutes=15))
-    async def async_update(self):
-        if self._sensor_grp == SENSOR_TYPE_BAT:
-            await self._hass.async_add_executor_job(self._api.updateBat)
-            self._state = self._api.getDataBatA(self._id_name)
+            if self.coordinator.data is None:
+                return attrs
             
-        if self._sensor_grp == SENSOR_TYPE_BAT2:
-            await self._hass.async_add_executor_job(self._api.updateBat)
-            if self._api.hasSecondBattery():
-                self._state = self._api.getDataBatB(self._id_name)
+            attrs.update({
+                "bmsId": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("bmsId"),
+                "latitude": self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lat"),
+                "longitude": self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lng"),
+                "time": self.coordinator.data.get(SENSOR_TYPE_DIST, {}).get("time"),
+                "range": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("estimatedMileage")
+                or self.coordinator.data.get(SENSOR_TYPE_MOTO, {}).get("estimatedMileage"),
+                "battery": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("batteryCharging"),
+                "battery_grade": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("gradeBattery"),
+                "centre_ctrl_batt": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("centreCtrlBattery")
+                or self.coordinator.data.get(SENSOR_TYPE_MOTO, {}).get("centreCtrlBattery"),
+            })
+        return attrs
 
-        elif self._sensor_grp == SENSOR_TYPE_MOTO:
-            await self._hass.async_add_executor_job(self._api.updateMoto)
-            self._state = self._api.getDataMoto(self._id_name)
-
-        elif self._sensor_grp == SENSOR_TYPE_POS:
-            await self._hass.async_add_executor_job(self._api.updateMoto)
-            self._state = self._api.getDataPos(self._id_name)
-
-        elif self._sensor_grp == SENSOR_TYPE_DIST:
-            await self._hass.async_add_executor_job(self._api.updateBat)
-            self._state = self._api.getDataDist(self._id_name)
-
-        elif self._sensor_grp == SENSOR_TYPE_OVERALL:
-            await self._hass.async_add_executor_job(self._api.updateMotoInfo)
-            self._state = self._api.getDataOverall(self._id_name)
-
-        elif self._sensor_grp == SENSOR_TYPE_TRACK:
-            await self._hass.async_add_executor_job(self._api.updateTrackInfo)
-            self._state = self._api.getDataTrack(self._id_name)
+    @property
+    def available(self):
+        """Return if entity is available."""
+        return self.coordinator.last_update_success

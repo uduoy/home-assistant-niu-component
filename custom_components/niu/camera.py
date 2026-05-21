@@ -25,35 +25,46 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
         )
         return False
 
-    username = niu_auth[CONF_USERNAME]
-    password = niu_auth[CONF_PASSWORD]
-    scooter_id = niu_auth[CONF_SCOOTER_ID]
+    # Get coordinator and api from hass.data
+    coordinator_data = hass.data[DOMAIN][entry.entry_id]
+    coordinator = coordinator_data["coordinator"]
+    api = coordinator_data["api"]
+    
+    _LOGGER.debug("Setting up camera: sn=%s, sensor_prefix=%s", api.sn, api.sensor_prefix)
 
-    api = NiuApi.from_hass(hass, username, password, scooter_id)
-    await hass.async_add_executor_job(api.initApi)
+    # Validate SN before creating entities
+    if not api.sn or api.sn.lower() == "none":
+        _LOGGER.error("Cannot create camera entity: SN not available or invalid (sn=%s)", api.sn)
+        return False
 
     camera_name = api.sensor_prefix + " Last Track Camera"
 
-    entry = {
+    device_config = {
         "name": camera_name,
         "still_image_url": "",
         "stream_source": None,
+        "authentication": "basic",
         "username": None,
         "password": None,
+        "limit_refetch_to_url_change": False,
         "content_type": "image/jpeg",
-        "advanced": {
-            "authentication": "basic",
-            "limit_refetch_to_url_change": False,
-            "framerate": 2,
-            "verify_ssl": True,
-        },
+        "framerate": 2,
+        "verify_ssl": False,
     }
-    async_add_entities([LastTrackCamera(hass, api, entry, camera_name, camera_name)])
+    async_add_entities([LastTrackCamera(hass, api, coordinator, device_config, camera_name, camera_name)])
 
 
 class LastTrackCamera(GenericCamera):
-    def __init__(self, hass, api, device_info, identifier: str, title: str) -> None:
+    _attr_has_entity_name = True
+    _attr_translation_key = "last_track_camera"
+    
+    def __init__(self, hass, api, coordinator, device_info, identifier: str, title: str) -> None:
+        if not api.sn or api.sn.lower() == "none":
+            raise ValueError(f"Cannot create camera entity: SN not available or invalid (sn={api.sn})")
         self._api = api
+        self._coordinator = coordinator
+        self._sn = api.sn
+        _LOGGER.debug("Creating camera: unique_id=camera.niu_%s_last_track", self._sn)
         super().__init__(hass, device_info, identifier, title)
 
     @property
@@ -68,30 +79,44 @@ class LastTrackCamera(GenericCamera):
         return self._last_image != b""
 
     @property
+    def unique_id(self):
+        return f"camera.niu_{self._sn}_last_track"
+
+    @property
     def device_info(self):
-        device_name = "Niu E-scooter"
+        # Use sensor_prefix (scooter name) if available, otherwise use SN
+        device_name = self._api.sensor_prefix if self._api.sensor_prefix else f"Niu Scooter {self._sn}"
+        # Use SN as primary identifier, fallback to device_name
+        identifier = self._sn if self._sn and self._sn.lower() != "none" else device_name
         dev = {
-            "identifiers": {("niu", device_name)},
+            "identifiers": {("niu", identifier)},
             "name": device_name,
             "manufacturer": "Niu",
-            "model": 1.0,
+            "model": self._api.sku_name or self._api.product_type or "Niu Scooter",
+            "hw_version": self._api.product_type,
+            "serial_number": self._api.carframe_id,
         }
         return dev
 
     async def async_camera_image(
         self, width: int | None = None, height: int | None = None
     ) -> bytes | None:
-        get_last_track = lambda: self._api.getDataTrack("track_thumb")
-        last_track_url = await self.hass.async_add_executor_job(get_last_track)
-
-        if last_track_url == self._last_url and self._last_image:
+        if self._coordinator.data is None:
             return self._last_image
+
+        last_track_url = self._coordinator.data.get(SENSOR_TYPE_TRACK, {}).get("track_thumb")
+        if not last_track_url:
+            _LOGGER.debug("No track_thumb URL available")
+            return self._last_image
+
+        if last_track_url == self._last_url and self._previous_image != b"":
+            # The path image is the same as before so the image is the same:
+            return self._previous_image
 
         try:
             async_client = get_async_client(self.hass, verify_ssl=self.verify_ssl)
             response = await async_client.get(
-                last_track_url, auth=self._auth, timeout=GET_IMAGE_TIMEOUT,
-                follow_redirects=True,
+                last_track_url, auth=self._auth, timeout=GET_IMAGE_TIMEOUT
             )
             response.raise_for_status()
             self._last_image = response.content
@@ -103,4 +128,5 @@ class LastTrackCamera(GenericCamera):
             return self._last_image
 
         self._last_url = last_track_url
+        self._previous_image = self._last_image
         return self._last_image
