@@ -19,15 +19,11 @@
                         "name": "Select which sensor to integrate",
                         "options": {
                             "BatteryCharge": "Battery Charge",
-                            "Isconnected": "Is Connected (Battery)",
                             "TimesCharged": "Times Charged",
                             "temperatureDesc": "Temperature Description",
                             "Temperature": "Battery Temperature",
                             "BatteryGrade": "Battery Grade",
                             "CurrentSpeed": "Current Speed",
-                            "ScooterConnected": "Scooter Connected",
-                            "IsCharging": "Is Charging",
-                            "IsLocked": "Is Locked",
                             "TimeLeft": "Time Left",
                             "EstimatedMileage": "Estimated Mileage",
                             "centreCtrlBatt": "Centre Control Battery",
@@ -72,9 +68,6 @@
             "battery_charge": {
                 "name": "Battery Charge"
             },
-            "is_connected": {
-                "name": "Is Connected"
-            },
             "times_charged": {
                 "name": "Times Charged"
             },
@@ -89,15 +82,6 @@
             },
             "current_speed": {
                 "name": "Current Speed"
-            },
-            "scooter_connected": {
-                "name": "Scooter Connected"
-            },
-            "is_charging": {
-                "name": "Is Charging"
-            },
-            "is_locked": {
-                "name": "Is Locked"
             },
             "time_left": {
                 "name": "Time Left"
@@ -146,6 +130,28 @@
             },
             "last_track_thumb": {
                 "name": "Last Track Thumbnail"
+            }
+        },
+        "binary_sensor": {
+            "is_battery_connected": {
+                "name": "Battery Connected"
+            },
+            "scooter_connected": {
+                "name": "Scooter Connected"
+            },
+            "is_charging": {
+                "name": "Is Charging",
+                "state": {
+                    "true": "Charging",
+                    "false": "Not Charging"
+                }
+            },
+            "is_locked": {
+                "name": "Is Locked",
+                "state": {
+                    "true": "Locked",
+                    "false": "Unlocked"
+                }
             }
         },
         "camera": {

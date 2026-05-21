@@ -27,15 +27,11 @@ SENSOR_TYPE_TRACK = "TRACK"
 
 AVAILABLE_SENSORS = [
     "BatteryCharge",
-    "Isconnected",
     "TimesCharged",
     "temperatureDesc",
     "Temperature",
     "BatteryGrade",
     "CurrentSpeed",
-    "ScooterConnected",
-    "IsCharging",
-    "IsLocked",
     "TimeLeft",
     "EstimatedMileage",
     "centreCtrlBatt",
@@ -75,15 +71,11 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
                 vol.In(
                     [
                         "BatteryCharge",
-                        "Isconnected",
                         "TimesCharged",
                         "temperatureDesc",
                         "Temperature",
                         "BatteryGrade",
                         "CurrentSpeed",
-                        "ScooterConnected",
-                        "IsCharging",
-                        "IsLocked",
                         "TimeLeft",
                         "EstimatedMileage",
                         "centreCtrlBatt",
@@ -107,6 +99,37 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     }
 )
 
+BIN_SENSOR_TYPES = {
+    "IsBatteryConnected": [
+        "is_battery_connected",
+        "isConnected",
+        SENSOR_TYPE_BAT,
+        "connectivity",
+        "mdi:battery-sync",
+    ],
+    "ScooterConnected": [
+        "scooter_connected",
+        "isConnected",
+        SENSOR_TYPE_MOTO,
+        "connectivity",
+        "mdi:motorbike-electric",
+    ],
+    "IsCharging": [
+        "is_charging",
+        "isCharging",
+        SENSOR_TYPE_BAT,
+        "power",
+        "mdi:battery-charging",
+    ],
+    "IsLocked": [
+        "is_locked",
+        "lockStatus",
+        SENSOR_TYPE_MOTO,
+        "lock",
+        "mdi:lock",
+    ],
+}
+
 SENSOR_TYPES = {
     "BatteryCharge": [
         "battery_charge",
@@ -115,14 +138,6 @@ SENSOR_TYPES = {
         SENSOR_TYPE_BAT,
         "battery",
         "mdi:battery-charging-50",
-    ],
-    "Isconnected": [
-        "is_connected",
-        "",
-        "isConnected",
-        SENSOR_TYPE_BAT,
-        "connectivity",
-        "mdi:connection",
     ],
     "TimesCharged": [
         "times_charged",
@@ -164,23 +179,6 @@ SENSOR_TYPES = {
         "none",
         "mdi:speedometer",
     ],
-    "ScooterConnected": [
-        "scooter_connected",
-        "",
-        "isConnected",
-        SENSOR_TYPE_MOTO,
-        "connectivity",
-        "mdi:motorbike-electric",
-    ],
-    "IsCharging": [
-        "is_charging",
-        "",
-        "isCharging",
-        SENSOR_TYPE_BAT,
-        "power",
-        "mdi:battery-charging",
-    ],
-    "IsLocked": ["is_locked", "", "lockStatus", SENSOR_TYPE_MOTO, "lock", "mdi:lock"],
     "TimeLeft": [
         "time_left",
         "h",

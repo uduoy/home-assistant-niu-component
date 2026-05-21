@@ -10,7 +10,7 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
 
-from .const import *
+from .const import CONF_AUTH, CONF_SENSORS, DOMAIN, SENSOR_TYPE_BAT, SENSOR_TYPE_MOTO, SENSOR_TYPE_DIST, SENSOR_TYPE_OVERALL, SENSOR_TYPE_POS, SENSOR_TYPE_TRACK, SENSOR_TYPES
 from .api import NiuApi
 from .gcj02 import gcj02_to_wgs84
 
@@ -287,37 +287,10 @@ class NiuSensor(CoordinatorEntity):
         raw_value = self._raw_state
         value_source = "live" if raw_value is not None else ("cached" if self._state is not None else "none")
 
-        attrs = {
+        return {
             "raw_value": raw_value,
             "value_source": value_source,
         }
-
-        # Keep existing extra attributes for connectivity sensor
-        if self._sensor_grp == SENSOR_TYPE_MOTO and self._id_name == "isConnected":
-            if self.coordinator.data is None:
-                return attrs
-            
-            attrs.update({
-                "bmsId": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("bmsId"),
-            try:
-                raw_lat = self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lat")
-                raw_lng = self.coordinator.data.get(SENSOR_TYPE_POS, {}).get("lng")
-                if raw_lat is not None and raw_lng is not None:
-                    wgs_lng, wgs_lat = gcj02_to_wgs84(float(raw_lng), float(raw_lat))
-                    attrs["latitude"] = wgs_lat
-                    attrs["longitude"] = wgs_lng
-                else:
-                    attrs["latitude"] = raw_lat
-                    attrs["longitude"] = raw_lng
-                "time": self.coordinator.data.get(SENSOR_TYPE_DIST, {}).get("time"),
-                "range": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("estimatedMileage")
-                or self.coordinator.data.get(SENSOR_TYPE_MOTO, {}).get("estimatedMileage"),
-                "battery": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("batteryCharging"),
-                "battery_grade": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("gradeBattery"),
-                "centre_ctrl_batt": self.coordinator.data.get(SENSOR_TYPE_BAT, {}).get("centreCtrlBattery")
-                or self.coordinator.data.get(SENSOR_TYPE_MOTO, {}).get("centreCtrlBattery"),
-            })
-        return attrs
 
     @property
     def available(self):

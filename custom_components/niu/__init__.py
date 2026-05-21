@@ -55,6 +55,7 @@ def _redact_sensitive(value: Any) -> Any:
 
 # Platforms that this integration supports
 PLATFORMS_SENSOR = ["sensor"]
+PLATFORMS_BINARY_SENSOR = ["binary_sensor"]
 PLATFORMS_CAMERA = ["camera"]
 PLATFORMS_DEVICE_TRACKER = ["device_tracker"]
 
@@ -78,6 +79,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Build platform list dynamically based on selected sensors
     platforms = list(PLATFORMS_SENSOR)
+    platforms.extend(PLATFORMS_BINARY_SENSOR)
     if "LastTrackThumb" in sensors_selected:
         platforms.extend(PLATFORMS_CAMERA)
 
